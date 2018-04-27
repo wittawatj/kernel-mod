@@ -1,6 +1,7 @@
 # kmod
 
 [![Build Status](https://travis-ci.com/wittawatj/kmod.svg?token=yWUaYGwontVUwf9G8fLY&branch=master)](https://travis-ci.com/wittawatj/kmod)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wittawatj/kmod/blob/master/LICENSE)
 
 A kernel test for model comparison
 
@@ -33,4 +34,5 @@ A kernel test for model comparison
 
 4. In Python, make sure you can `import freqopttest` and `import kgof` without
    any error.
+
 
