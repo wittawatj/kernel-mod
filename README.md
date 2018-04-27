@@ -10,8 +10,6 @@ A kernel test for model comparison
   repository](https://github.com/wittawatj/kernel-gof). Will need the Python 3
   version of the package.
 
-* Since `kgof` package depends on `freqopttest`, you __may__ need to install it as
-  well. This can be obtained from [its git
-  repository](https://github.com/wittawatj/interpretable-test). You will need
-  the Python 3 version of the package.
-
+* Depends on the `freqopttest` (containing the UME two-sample test) package
+  from  [its git repository](https://github.com/wittawatj/interpretable-test).
+  You will need the Python 3 version of the package.
