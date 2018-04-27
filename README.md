@@ -25,6 +25,7 @@ A kernel test for model comparison
  2. Clone the two repositories. You will get two folders, say, at
     `/path/to/kgof` and `/path/to/freqopttest`.
  3. Install the two packages with
+
         pip install -e /path/to/kgof
         pip install -e /path/to/freqopttest
 
