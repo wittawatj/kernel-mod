@@ -20,7 +20,7 @@ A kernel test for model comparison
 
  ## Install `kgof` and `freqopttest`
 
- If you are a collaborator of this project, you should do the followings.
+ If you are a coder/collaborator of this project, you should do the followings.
 
  1. Contact Wittawat to add you to the two Github private repositories.
  2. Clone the two repositories. You will get two folders, say, at

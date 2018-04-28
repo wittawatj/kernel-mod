@@ -58,7 +58,7 @@ class Model(with_metaclass(ABCMeta, object)):
 
 # end of Model
 
-class ComposedModel(with_metaclass(ABCMeta, object)):
+class ComposedModel(Model):
     """
     A simple model constructed directly from the specified UnnormalizedDensity
     and/or DataSource.
@@ -100,6 +100,12 @@ class ComposedModel(with_metaclass(ABCMeta, object)):
         Return None if not available.
         """
         return self.ds
+
+    def dim(self):
+        if self.p is not None:
+            return self.p.dim()
+        return self.ds.dim()
+
 
 # end class ComposedModel
 
