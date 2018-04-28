@@ -5,8 +5,8 @@
 
 A kernel test for model comparison
 
-* Developed on Python 3.6.3. Some effort will be made to support Python 2.7. 
-    Collaborators of this project should use Python 3.6+.
+* Developed on Python 3.6.3 (installed with Anaconda). Some effort will be made
+  to support Python 2.7.  Collaborators of this project should use Python 3.6+.
 
 * Depends on the `kgof` package. This can be obtained from [its git
   repository](https://github.com/wittawatj/kernel-gof). Will need the Python 3
@@ -35,4 +35,6 @@ A kernel test for model comparison
 4. In Python, make sure you can `import freqopttest` and `import kgof` without
    any error.
 
+In total, there will be three repositories. During development make sure to
+`git pull` all of them often.
 
