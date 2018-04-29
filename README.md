@@ -38,3 +38,10 @@ A kernel test for model comparison
 In total, there will be three repositories. During development make sure to
 `git pull` all of them often.
 
+## Coding guideline
+
+* Use `autograd.numpy` instead of `numpy`. Part of the code relies on
+  `autograd` to do automatic differentiation. Also use `np.dot(X, Y)` instead
+  of `X.dot(Y)`. `autograd` cannot differentiate the latter. Also, do not use
+  `x += ...`.  Use `x = x + ..` instead.
+

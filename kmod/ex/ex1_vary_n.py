@@ -241,7 +241,7 @@ alpha = 0.05
 tr_proportion = 0.5
 
 # repetitions for each sample size 
-reps = 3
+reps = 100
 
 # tests to try
 method_funcs = [ 
@@ -269,10 +269,10 @@ def get_ns_pqrsource(prob_label):
         # This is the simplest possible problem.
         'stdnormal_shift_d1': (
             [200, 400, 600, 800],
-            # p = N(0.4, 1)
-            model.ComposedModel(p=density.IsotropicNormal(np.array([0.4]), 1.0)),
-            # q = N(0.2, 1). q is closer to r. Should reject.
-            model.ComposedModel(p=density.IsotropicNormal(np.array([0.2]), 1.0)),
+            # p = N(1, 1)
+            model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
+            # q = N(0.5, 1). q is closer to r. Should reject.
+            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]), 1.0),
         ),
@@ -342,7 +342,7 @@ def run_problem(prob_label):
     for r in range(reps):
         for ni, n in enumerate(ns):
             for mi, f in enumerate(method_funcs):
-                logger.info("Collecting result (%s, r=%d, n=%rd)" %
+                logger.info("Collecting result (%s, r=%d, n=%d)" %
                         (f.__name__, r, n))
                 # let the aggregator finalize things
                 aggregators[r, ni, mi].finalize()
