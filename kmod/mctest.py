@@ -211,6 +211,7 @@ class DC_FSSD(DCTest):
 
 # end of MCFSSD
 
+
 class SC_UME(SCTest):
     """
     A test of for model comparison using the unnormalized ME (UME) statistic
@@ -234,7 +235,7 @@ class SC_UME(SCTest):
         :param k: a kmod.Kernel 
         :param l: a kmod.Kernel
         :param V: Jp x d numpy array of Jp test locations used in UME(q, r)
-        :param W: Jq x d numpy array of Jq test locations used in FSSD(q, l, W)
+        :param W: Jq x d numpy array of Jq test locations used in UME(q, r)
         :param alpha: significance level of the test
         """
         super(SC_UME, self).__init__(datap, dataq, alpha)
@@ -325,3 +326,92 @@ class SC_UME(SCTest):
         return mean_h1, var_h1
 
 # end of class SC_UME
+
+class SC_GaussUME(SC_UME):
+    """
+    A SC_UME using two Gaussian kernels.
+    """
+    def __init__(self, datap, dataq, gwidth2p, gwidth2q, V, W, alpha=0.01):
+        """
+        :param datap: a kmod.data.Data object representing an i.i.d. sample X
+            (from model 1)
+        :param dataq: a kmod.data.Data object representing an i.i.d. sample Y
+            (from model 2)
+        :param gwidth2p: squared Gaussian width for UME(P, R)
+        :param gwidth2q: squared Gaussian width for UME(Q, R)
+        :param V: Jp x d numpy array of Jp test locations used in UME(p, r)
+        :param W: Jq x d numpy array of Jq test locations used in UME(q, r)
+        :param alpha: significance level of the test
+        """
+        if not util.is_real_num(gwidth2p) or gwidth2p <= 0:
+            raise ValueError('gwidth2p must be positive real. Was {}'.format(gwidth2p))
+        if not util.is_real_num(gwidth2q) or gwidth2q <= 0:
+            raise ValueError('gwidth2q must be positive real. Was {}'.format(gwidth2q))
+
+        k = kernel.KGauss(gwidth2p)
+        l = kernel.KGauss(gwidth2q)
+        super(SC_UME, self).__init__(datap, dataq, k, l, V, W, alpha)
+
+    @staticmethod
+    def optimize_2sets_locs_width(datap, dataq, datar, V0, W0, gwidth0p,
+            gwidth0q, reg=1e-3, max_iter=100,  tol_fun=1e-6, disp=False,
+            locs_bounds_frac=100, gwidth_lb=None, gwidth_ub=None):
+        """
+        Optimize two sets of test locations and the Gaussian kernel widths by
+        maximizing the test power criterion of the UME two-sample test (not
+        three-sample test). Briefly,
+            1. Optimize the set V of test locations for UME(P, R) by maximizing
+            its two-sample test power criterion.
+            2. Optimize the set W for UME(Q, R) in the same way.
+
+        The two optimization problems are independent. The only dependency is
+        the data from R. This optimization function is deterministic.
+
+        - datap: a kgof.data.Data from P (model 1)
+        - dataq: a kgof.data.Data from Q (model 2)
+        - datar: a kgof.data.Data from R (data generating distribution)
+        - V0: Jpxd numpy array. Initial V.
+        - W0: Jqxd numpy array. Initial W.
+        - gwidth0p: initial value of the Gaussian width^2 for UME(P, R)
+        - gwidth0q: initial value of the Gaussian width^2 for UME(Q, R)
+        - reg: reg to add to the mean/sqrt(variance) criterion to become
+            mean/sqrt(variance + reg)
+        - max_iter: #gradient descent iterations
+        - tol_fun: termination tolerance of the objective value
+        - disp: True to print convergence messages
+        - locs_bounds_frac: When making box bounds for the test_locs, extend
+              the box defined by coordinate-wise min-max by std of each coordinate
+              (of the aggregated data) multiplied by this number.
+        - gwidth_lb: absolute lower bound on both the Gaussian width^2
+        - gwidth_ub: absolute upper bound on both the Gaussian width^2
+
+        If the lb, ub bounds are None, use fraction of the median heuristics 
+            to automatically set the bounds.
+        
+        Return (  
+            (V test_locs, gaussian width^2 for UME(P, R), optimization info log),
+            (W test_locs, gaussian width^2 for UME(Q, R), optimization info log),
+                )
+        """
+
+        Z = datar.data()
+        datapr = tstdata.TSTData(datap.data(), Z)
+        dataqr = tstdata.TSTData(dataq.data(), Z)
+
+        # optimization for UME(P,R)
+        V_opt, gw2p_opt, opt_infop = \
+        tst.GaussUMETest.optimize_locs_width(datapr, V0, gwidth0p, reg=reg,
+                max_iter=max_iter, tol_fun=tol_fun, disp=disp,
+                locs_bounds_frac=locs_bounds_frac, gwidth_lb=gwidth_lb,
+                gwidth_ub=gwidth_ub)
+
+        # optimization for UME(Q,R)
+        W_opt, gw2q_opt, opt_infoq = \
+        tst.GaussUMETest.optimize_locs_width(dataqr, W0, gwidth0q, reg=reg,
+                max_iter=max_iter, tol_fun=tol_fun, disp=disp,
+                locs_bounds_frac=locs_bounds_frac, gwidth_lb=gwidth_lb,
+                gwidth_ub=gwidth_ub)
+
+        return ( (V_opt, gw2p_opt, opt_infop), (W_opt, gw2q_opt, opt_infoq) )
+
+# end class SC_GaussUME
