@@ -114,7 +114,7 @@ class TestSC_UME(unittest.TestCase):
         assert test_result['h0_rejected']
 
 class TestSC_GaussUME(unittest.TestCase):
-    def test_optimize_2sets_locs_width(self):
+    def test_optimize_2sets_locs_widths(self):
         mp, varp = 2, 1
         # q cannot be the true model. 
         # That violates our assumption and the asymptotic null distribution
@@ -166,7 +166,7 @@ class TestSC_GaussUME(unittest.TestCase):
             'gwidth_ub': None,
         }
 
-        umep_params, umeq_params = mct.SC_GaussUME.optimize_2sets_locs_width(
+        umep_params, umeq_params = mct.SC_GaussUME.optimize_2sets_locs_widths(
             datptr, datqtr, datrtr, V0, W0, gwidth0p, gwidth0q, 
             **opt_options)
         (V_opt, gw2p_opt, opt_infop) = umep_params

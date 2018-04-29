@@ -37,7 +37,7 @@ class SCTest(with_metaclass(ABCMeta, object)):
             (from model 2)
         :param alpha: significance level of the test
         """
-        self.datap = dataq
+        self.datap = datap
         self.dataq = dataq
         self.alpha = alpha
 
@@ -325,6 +325,28 @@ class SC_UME(SCTest):
         var_h1 = var_pr -2.0*var_pqr + var_qr
         return mean_h1, var_h1
 
+    @staticmethod
+    def power_criterion(datap, dataq, datar, k, l, V, W, reg=1e-3): 
+        """
+        Compute the mean and standard deviation of the three-sample test
+        statistic under H1. 
+
+        :param datap: kgof.data.Data. data from P (model 1)
+        :param dataq: kgof.data.Data. data from Q (model 2)
+        :param datar: kgof.data.Data. data from R (data generating distribution)
+        :param k: kmod.kernel.Kernel for UME(P, R)
+        :param l: kmod.kernel.Kernel for UME(Q, R)
+        :param V: Jp x d numpy array of Jp test locations for UME(P, R)
+        :param W: Jq x d numpy array of Jq test locations for UME(Q, R)
+        :param reg: regularization parameter
+        
+        Return power criterion = mean_under_H1/sqrt(var_under_H1 + reg) .
+        """
+        scume = SC_UME(datap, dataq, k, l, V, W)
+        mean_h1, var_h1 = scume.get_H1_mean_variance(datar, return_variance=True)
+        ratio = mean_h1/np.sqrt(var_h1 + reg)
+        return ratio
+
 # end of class SC_UME
 
 class SC_GaussUME(SC_UME):
@@ -353,7 +375,118 @@ class SC_GaussUME(SC_UME):
         super(SC_UME, self).__init__(datap, dataq, k, l, V, W, alpha)
 
     @staticmethod
-    def optimize_2sets_locs_width(datap, dataq, datar, V0, W0, gwidth0p,
+    def optimize_3sample_criterion(datap, dataq, datar, V0, gwidth0, reg=1e-3,
+            max_iter=100, tol_fun=1e-6, disp=False, locs_bounds_frac=100,
+            gwidth_lb=None, gwidth_ub=None):
+        """
+        Similar to optimize_2sets_locs_widths() but constrain V=W, and
+        constrain the two Gaussian widths to be the same.
+        Optimize one set of test locations and one Gaussian kernel width by
+        maximizing the test power criterion of the UME *three*-sample test             
+
+        This optimization function is deterministic.
+
+        - datap: a kgof.data.Data from P (model 1)
+       - dataq: a kgof.data.Data from Q (model 2)
+        - datar: a kgof.data.Data from R (data generating distribution)
+        - V0: Jxd numpy array. Initial V containing J locations. For both
+              UME(P, R) and UME(Q, R)
+        - gwidth0: initial value of the Gaussian width^2 for both UME(P, R),
+              and UME(Q, R)
+        - reg: reg to add to the mean/sqrt(variance) criterion to become
+            mean/sqrt(variance + reg)
+        - max_iter: #gradient descent iterations
+        - tol_fun: termination tolerance of the objective value
+        - disp: True to print convergence messages
+        - locs_bounds_frac: When making box bounds for the test_locs, extend
+              the box defined by coordinate-wise min-max by std of each
+              coordinate (of the aggregated data) multiplied by this number.
+        - gwidth_lb: absolute lower bound on both the Gaussian width^2
+        - gwidth_ub: absolute upper bound on both the Gaussian width^2
+
+        If the lb, ub bounds are None, use fraction of the median heuristics 
+            to automatically set the bounds.
+        
+        Return (optimized V, optimized Gaussian width^2, info from the optimization)
+        """
+        J = V0.shape[0]
+        X, Y, Z = datap.data(), dataq.data(), datar.data()
+        n, d = X.shape
+
+        W0 = np.ones((J, d))
+
+        # Parameterize the Gaussian width with its square root (then square later)
+        # to automatically enforce the positivity.
+        def obj(sqrt_gwidth, V):
+            k = kernel.KGauss(sqrt_gwidth**2)
+            l = kernel.KGauss(2.0)
+            return -SC_UME.power_criterion(datap, dataq, datar, k, k, V, W0,
+                    reg=reg)
+
+        flatten = lambda gwidth, V: np.hstack((gwidth, V.reshape(-1)))
+        def unflatten(x):
+            sqrt_gwidth = x[0]
+            V = np.reshape(x[1:], (J, d))
+            return sqrt_gwidth, V
+
+        def flat_obj(x):
+            sqrt_gwidth, V = unflatten(x)
+            return obj(sqrt_gwidth, V)
+
+        # Initial point
+        x0 = flatten(np.sqrt(gwidth0), V0)
+        
+        #make sure that the optimized gwidth is not too small or too large.
+        XYZ = np.vstack((X, Y, Z))
+        med2 = util.meddistance(XYZ, subsample=1000)**2
+        fac_min = 1e-2 
+        fac_max = 1e2
+        if gwidth_lb is None:
+            gwidth_lb = max(fac_min*med2, 1e-3)
+        if gwidth_ub is None:
+            gwidth_ub = min(fac_max*med2, 1e5)
+
+        # Make a box to bound test locations
+        XYZ_std = np.std(XYZ, axis=0)
+        # XYZ_min: length-d array
+        XYZ_min = np.min(XYZ, axis=0)
+        XYZ_max = np.max(XYZ, axis=0)
+        # V_lb: J x d
+        V_lb = np.tile(XYZ_min - locs_bounds_frac*XYZ_std, (J, 1))
+        V_ub = np.tile(XYZ_max + locs_bounds_frac*XYZ_std, (J, 1))
+        # (J*d+1) x 2. Take square root because we parameterize with the square
+        # root
+        x0_lb = np.hstack((np.sqrt(gwidth_lb), np.reshape(V_lb, -1)))
+        x0_ub = np.hstack((np.sqrt(gwidth_ub), np.reshape(V_ub, -1)))
+        x0_bounds = list(zip(x0_lb, x0_ub))
+
+        # optimize. Time the optimization as well.
+        # https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html
+        grad_obj = autograd.elementwise_grad(flat_obj)
+        with util.ContextTimer() as timer:
+            opt_result = scipy.optimize.minimize(
+              flat_obj, x0, method='L-BFGS-B', 
+              bounds=x0_bounds,
+              tol=tol_fun, 
+              options={
+                  'maxiter': max_iter, 'ftol': tol_fun, 'disp': disp,
+                  'gtol': 1.0e-08,
+                  },
+              jac=grad_obj,
+            )
+
+        opt_result = dict(opt_result)
+        opt_result['time_secs'] = timer.secs
+        x_opt = opt_result['x']
+        sq_gw_opt, V_opt = unflatten(x_opt)
+        gw_opt = sq_gw_opt**2
+
+        assert util.is_real_num(gw_opt), 'gw_opt is not real. Was %s' % str(gw_opt)
+        return V_opt, gw_opt, opt_result
+
+
+    @staticmethod
+    def optimize_2sets_locs_widths(datap, dataq, datar, V0, W0, gwidth0p,
             gwidth0q, reg=1e-3, max_iter=100,  tol_fun=1e-6, disp=False,
             locs_bounds_frac=100, gwidth_lb=None, gwidth_ub=None):
         """
