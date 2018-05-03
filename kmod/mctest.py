@@ -548,3 +548,148 @@ class SC_GaussUME(SC_UME):
         return ( (V_opt, gw2p_opt, opt_infop), (W_opt, gw2q_opt, opt_infoq) )
 
 # end class SC_GaussUME
+
+class SC_MMD(SCTest):
+    """
+    A test for model comparison using the Maximum Mean Discrepancy (MMD) proposed 
+    by Bounliphone, et al 2016 (ICLR)
+    """
+
+    def __init__(self, datap, dataq, k, alpha):
+        """
+        :param datap: a kmod.data.Data object representing an i.i.d. sample X
+            (from model 1)
+        :param dataq: a kmod.data.Data object representing an i.i.d. sample Y
+            (from model 2)
+        :param k: a kmod.Kernel
+        :param alpha: significance level of the test
+        """
+        super(SC_MMD, self).__init__(datap, dataq, alpha)
+        self.k = k
+
+    def perform_test(self, dat):
+        """perform the model comparison test and return values computed in a dictionary:
+        {
+            alpha: 0.01,
+            pvalue: 0.0002,
+            test_stat: 2.3,
+            h0_rejected: True,
+            time_secs: ...
+        }
+
+        :param dat: an instance of kmod.data.Data
+        """
+        with util.ContextTimer() as t:
+            alpha = self.alpha
+            X = dat.data()
+            n = X.shape[0]
+            # mean and variance are not yet scaled by \sqrt{n}
+            # The variance is the same for both H0 and H1.
+            mean_h1, var = self.get_H1_mean_variance(dat)
+            stat = (n**0.5) * mean_h1
+            # Assume the mean of the null distribution is 0
+            pval = stats.norm.sf(stat, loc=0, scale=var**0.5)
+
+        results = {
+            'alpha': self.alpha, 'pvalue': pval, 'test_stat': stat,
+            'h0_rejected': pval < alpha, 'time_secs': t.secs,
+        }
+        return results
+
+    def compute_stat(self, dat):
+        """
+        Compute the test statistic
+        :returns: the test statistic (a floating-point number)
+        """
+        mean_h1 = self.get_H1_mean_variance(dat, return_variance=False)
+        n = dat.sample_size()
+        return (n**0.5) * mean_h1
+
+    def get_H1_mean_variance(self, dat, return_variance=True):
+        """
+        Return the mean and variance under H1 of the 
+        test statistic = (MMD_u(Z_{n_z}, X_{n_x})^2 - MMD_u(Z_{n_z}, Y_{n_y})^2)^2.
+        The estimator of the mean is unbiased (can be negative). The estimator
+        of the variance is also unbiased. The variance is also valid under H0.
+
+        :returns: (mean, variance)
+        """
+ 
+        # form a two-sample test dataset between datap and dat (data from R)
+        Z = dat.data()
+        datap = self.datap.data()
+        dataq = self.dataq.data()
+        mmd_mean_pr, var_pr = tst.QuadMMDTest.h1_mean_var(datap, Z,
+                                                          self.k, True)
+        mmd_mean_qr, var_qr = tst.QuadMMDTest.h1_mean_var(dataq, Z,
+                                                          self.k, True)
+        var_pqr = self.get_cross_covariance(datap, dataq, Z, self.k)
+
+        mean_h1 = mmd_mean_pr - mmd_mean_qr
+        if not return_variance:
+            return mean_h1
+        var_h1 = var_pr - 2.0*var_pqr + var_qr
+        return mean_h1, var_h1
+
+    @staticmethod
+    def get_cross_covariance(X, Y, Z, k):
+        """
+        Compute the covariance of the U-statistics for two MMDs
+        (Bounliphone, et al. 2016, ICLR) 
+
+        Args:
+            X: numpy array of shape (nx, d), sample from the model 1 
+            Y: numpy array of shape (ny, d), sample from the model 2
+            Z: numpy array of shape (nz, d), sample from the reference
+            k: a kernel object 
+
+        Returns:
+            cov: covariance of two U stats 
+        """
+        Kzz = k.eval(Z, Z)
+        # Kxx
+        Kzx = k.eval(Z, X)
+        # Kxy
+        Kzy = k.eval(Z, Y)
+        # Kxz
+        Kzznd = Kzz - np.diag(np.diag(Kzz))
+        # Kxxnd = Kxx-diag(diag(Kxx));
+
+        nz = Kzz.shape[0]
+        nx = Kzx.shape[1]
+        ny = Kzy.shape[1]
+        # m = size(Kxx,1);
+        # n = size(Kxy,2);
+        # r = size(Kxz,2);
+
+        u_zz = (1./(nz*(nz-1))) * np.sum(Kzznd)
+        u_zx = np.sum(Kzx) / (nz*nx)
+        u_zy = np.sum(Kzy) / (nz*ny)
+        # u_xx=sum(sum(Kxxnd))*( 1/(m*(m-1)) );
+        # u_xy=sum(sum(Kxy))/(m*n);
+        # u_xz=sum(sum(Kxz))/(m*r);
+
+        ct1 = 1./(nz*(nz-1)**2) * np.sum(np.dot(Kzznd,Kzznd))
+        # ct1 = (1/(m*(m-1)*(m-1)))   * sum(sum(Kzznd*Kzznd));
+        ct2 = u_zz**2
+        # ct2 =  u_xx^2;
+        ct3 = 1./(nz*(nz-1)*ny) * np.sum(np.dot(Kzznd,Kzy))
+        # ct3 = (1/(m*(m-1)*r))       * sum(sum(Kzznd*Kxz));
+        ct4 = u_zz * u_zy
+        # ct4 =  u_xx*u_xz;
+        ct5 = (1./(nz*(nz-1)*nx)) * np.sum(np.dot(Kzznd, Kzx))
+        # ct5 = (1/(m*(m-1)*n))       * sum(sum(Kzznd*Kxy));
+        ct6 = u_zz * u_zx
+        # ct6 = u_xx*u_xy;
+        ct7 = (1/(nx*nz*ny)) * np.sum(np.dot(Kzx.T, Kzy))
+        # ct7 = (1/(n*m*r))           * sum(sum(Kzx'*Kxz));
+        ct8 = u_zx * u_zy
+        # ct8 = u_xy*u_xz;
+
+        zeta_1 = (ct1-ct2)-(ct3-ct4)-(ct5-ct6)+(ct7-ct8)
+        # zeta_1 = (ct1-ct2)-(ct3-ct4)-(ct5-ct6)+(ct7-ct8);
+        cov = (4*(nz-2))/(nz*(nz-1)) * zeta_1
+        # theCov = (4*(m-2))/(m*(m-1)) * zeta_1;
+        return cov    
+
+# end of class SC_UME
