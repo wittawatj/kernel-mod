@@ -614,20 +614,20 @@ class SC_MMD(SCTest):
 
         :returns: (mean, variance)
         """
- 
         # form a two-sample test dataset between datap and dat (data from R)
         Z = dat.data()
-        datap = self.datap.data()
-        dataq = self.dataq.data()
-        mmd_mean_pr, var_pr = tst.QuadMMDTest.h1_mean_var(datap, Z,
-                                                          self.k, True)
-        mmd_mean_qr, var_qr = tst.QuadMMDTest.h1_mean_var(dataq, Z,
-                                                          self.k, True)
-        var_pqr = self.get_cross_covariance(datap, dataq, Z, self.k)
-
+        X = self.datap.data()
+        Y = self.dataq.data()
+        # This always return a variance. But will be None if is_var_computed=False
+        mmd_mean_pr, var_pr = tst.QuadMMDTest.h1_mean_var(X, Z, self.k,
+                is_var_computed=return_variance)
+        mmd_mean_qr, var_qr = tst.QuadMMDTest.h1_mean_var(Y, Z, self.k,
+                is_var_computed=return_variance)
         mean_h1 = mmd_mean_pr - mmd_mean_qr
         if not return_variance:
             return mean_h1
+
+        var_pqr = self.get_cross_covariance(X, Y, Z, self.k)
         var_h1 = var_pr - 2.0*var_pqr + var_qr
         return mean_h1, var_h1
 
@@ -688,7 +688,7 @@ class SC_MMD(SCTest):
 
         zeta_1 = (ct1-ct2)-(ct3-ct4)-(ct5-ct6)+(ct7-ct8)
         # zeta_1 = (ct1-ct2)-(ct3-ct4)-(ct5-ct6)+(ct7-ct8);
-        cov = (4*(nz-2))/(nz*(nz-1)) * zeta_1
+        cov = (4.0*(nz-2))/(nz*(nz-1)) * zeta_1
         # theCov = (4*(m-2))/(m*(m-1)) * zeta_1;
         return cov    
 
