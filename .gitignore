@@ -1,6 +1,7 @@
 *.swp
 *~
 *.bak
+problems/
 # pickle files
 *.p
 

@@ -16,7 +16,7 @@ import kgof.goftest as gof
 import freqopttest.tst as tst
 import freqopttest.data as tstdata
 from kmod import data, density, kernel, util
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 
 import scipy
 import scipy.stats as stats

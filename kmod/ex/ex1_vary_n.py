@@ -68,20 +68,149 @@ def sample_pqr(ds_p, ds_q, ds_r, n, r, only_from_r=False):
     Return (datp, datq, datr) where each is a Data containing n x d numpy array
     Return datr if only_from_r is True.
     """
-    datr = ds_r.sample(n, seed=r+3)
+    datr = ds_r.sample(n, seed=r+30)
     if only_from_r:
         return datr
-    datp = ds_p.sample(n, seed=r+1)
-    datq = ds_q.sample(n, seed=r+2)
+    datp = ds_p.sample(n, seed=r+10)
+    datq = ds_q.sample(n, seed=r+20)
     return datp, datq, datr
 
 #-------------------------------------------------------
 
-def met_sc_umeJ1_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
+def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
+    """
+    UME-based three-sample test
+        * Use J=1 test location by default. 
+        * 2sopt = optimize the two sets of test locations by maximizing the
+            2-sample test's power criterion. Each set is optmized separately.
+        * Gaussian kernels for the two UME statistics. The Gaussian widths are
+        also optimized separately.
+    """
+    if not P.has_datasource() or not Q.has_datasource():
+        # Not applicable. Return {}.
+        return {}
+    assert J >= 1
+
+    ds_p = P.get_datasource()
+    ds_q = Q.get_datasource()
+    # sample some data 
+    datp, datq, datr = sample_pqr(ds_p, ds_q, data_source, n, r, only_from_r=False)
+
+    # Start the timer here
+    with util.ContextTimer() as t:
+        # split the data into training/test sets
+        [(datptr, datpte), (datqtr, datqte), (datrtr, datrte)] = \
+            [D.split_tr_te(tr_proportion=tr_proportion, seed=r) for D in [datp, datq, datr]]
+        Xtr, Ytr, Ztr = [D.data() for D in [datptr, datqtr, datrtr]]
+
+        # initialize optimization parameters.
+        # Initialize the Gaussian widths with the median heuristic
+        medxz = util.meddistance(np.vstack((Xtr, Ztr)), subsample=1000)
+        medyz = util.meddistance(np.vstack((Ytr, Ztr)), subsample=1000)
+        gwidth0p = medxz**2
+        gwidth0q = medyz**2
+
+        # numbers of test locations in V, W
+        Jp = J
+        Jq = J
+
+        # pick a subset of points in the training set for V, W
+        Xyztr = np.vstack((Xtr, Ytr, Ztr))
+        VW = util.subsample_rows(Xyztr, Jp+Jq, seed=r+1)
+        V0 = VW[:Jp, :]
+        W0 = VW[Jp:, :]
+
+        # optimization options
+        opt_options = {
+            'max_iter': 100,
+            'reg': 1e-4,
+            'tol_fun': 1e-6,
+            'locs_bounds_frac': 100,
+            'gwidth_lb': None,
+            'gwidth_ub': None,
+        }
+
+        umep_params, umeq_params = mct.SC_GaussUME.optimize_2sets_locs_widths(
+            datptr, datqtr, datrtr, V0, W0, gwidth0p, gwidth0q, 
+            **opt_options)
+        (V_opt, gw2p_opt, opt_infop) = umep_params
+        (W_opt, gw2q_opt, opt_infoq) = umeq_params
+        k_opt = kernel.KGauss(gw2p_opt)
+        l_opt = kernel.KGauss(gw2q_opt)
+
+        # construct a UME test
+        scume_opt2 = mct.SC_UME(datpte, datqte, k_opt, l_opt, V_opt, W_opt,
+                alpha=alpha)
+        scume_opt2_result = scume_opt2.perform_test(datrte)
+
+    return {
+            # This key "test" can be removed. Storing V, W can take quite a lot
+            # of space, especially when the input dimension d is high.
+            #'test':scume, 
+            'test_result': scume_opt2_result, 'time_secs': t.secs}
+
+def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
+    """
+    UME-based three-sample tespt
+        * Use J=1 test location by default (in the set V=W). 
+        * 3sopt = optimize the test locations by maximizing the 3-sample test's
+        power criterion. There is only one set of test locations.
+        * One Gaussian kernel for the two UME statistics. Optimize the Gaussian width
+    """
+    if not P.has_datasource() or not Q.has_datasource():
+        # Not applicable. Return {}.
+        return {}
+    assert J >= 1
+
+    ds_p = P.get_datasource()
+    ds_q = Q.get_datasource()
+    # sample some data 
+    datp, datq, datr = sample_pqr(ds_p, ds_q, data_source, n, r, only_from_r=False)
+
+    # Start the timer here
+    with util.ContextTimer() as t:
+        # split the data into training/test sets
+        [(datptr, datpte), (datqtr, datqte), (datrtr, datrte)] = \
+            [D.split_tr_te(tr_proportion=tr_proportion, seed=r) for D in [datp, datq, datr]]
+        Xtr, Ytr, Ztr = [D.data() for D in [datptr, datqtr, datrtr]]
+        Xyztr = np.vstack((Xtr, Ytr, Ztr))
+        # initialize optimization parameters.
+        # Initialize the Gaussian widths with the median heuristic
+        medxyz = util.meddistance(Xyztr, subsample=1000)
+        gwidth0 = medxyz**2
+
+        # pick a subset of points in the training set for V, W
+        V0 = util.subsample_rows(Xyztr, J, seed=r+2)
+
+        # optimization options
+        opt_options = {
+            'max_iter': 100,
+            'reg': 1e-4,
+            'tol_fun': 1e-6,
+            'locs_bounds_frac': 100,
+            'gwidth_lb': None,
+            'gwidth_ub': None,
+        }
+        V_opt, gw2_opt, opt_result = mct.SC_GaussUME.optimize_3sample_criterion(
+            datptr, datqtr, datrtr, V0, gwidth0, **opt_options)    
+        k_opt = kernel.KGauss(gw2_opt)
+
+        # construct a UME test
+        scume_opt3 = mct.SC_UME(datpte, datqte, k_opt, k_opt, V_opt, V_opt,
+                alpha=alpha)
+        scume_opt3_result = scume_opt3.perform_test(datrte)
+
+    return {
+            # This key "test" can be removed. Storing V, W can take quite a lot
+            # of space, especially when the input dimension d is high.
+            #'test':scume, 
+            'test_result': scume_opt3_result, 'time_secs': t.secs}
+
+def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
     """
     UME-based three-sample test. 
         * Use J=1 test location by default. 
-        * Use two sets of test locations by default: V and W, each having J
+        * Use two sets (2V) of test locations by default: V and W, each having J
             locations.  Will constrain V=W if use_1set_locs=True.
         * The test locations are selected at random from the data. Selected
             points are removed for testing.
@@ -141,47 +270,13 @@ def met_sc_umeJ1_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
             'test_result': scume_rand_result, 'time_secs': t.secs}
 
 
-#def job_fssdJ1q_med(p, data_source, tr, te, r, J=1, null_sim=None):
-#    """
-#    FSSD test with a Gaussian kernel, where the test locations are randomized,
-#    and the Gaussian width is set with the median heuristic. Use full sample.
-#    No training/testing splits.
-
-#    p: an UnnormalizedDensity
-#    data_source: a DataSource
-#    tr, te: Data
-#    r: trial number (positive integer)
-#    """
-#    if null_sim is None:
-#        null_sim = gof.FSSDH0SimCovObs(n_simulate=2000, seed=r)
-
-#    # full data
-#    data = tr + te
-#    X = data.data()
-#    with util.ContextTimer() as t:
-#        # median heuristic 
-#        med = util.meddistance(X, subsample=1000)
-#        k = kernel.KGauss(med**2)
-#        V = util.fit_gaussian_draw(X, J, seed=r+1)
-
-#        fssd_med = gof.FSSD(p, k, V, null_sim=null_sim, alpha=alpha)
-#        fssd_med_result = fssd_med.perform_test(data)
-#    return { 'test_result': fssd_med_result, 'time_secs': t.secs}
-
-#def job_fssdJ5q_med(p, data_source, tr, te, r):
-#    """
-#    FSSD. J=5
-#    """
-#    return job_fssdJ1q_med(p, data_source, tr, te, r, J=5)
-
-
 # Define our custom Job, which inherits from base class IndependentJob
 class Ex1Job(IndependentJob):
    
     def __init__(self, aggregator, P, Q, data_source, prob_label, rep, met_func, n):
         #walltime = 60*59*24 
         walltime = 60*59
-        memory = int(tr_proportion*n*1e-2) + 50
+        memory = int(n*1e-2) + 50
 
         IndependentJob.__init__(self, aggregator, walltime=walltime,
                                memory=memory)
@@ -222,14 +317,16 @@ class Ex1Job(IndependentJob):
             prob_label, r, n, t.secs))
 
         # save result
-        fname = '%s-%s-n%d_r%d_a%.3f_trp%.2f.p' \
-                %(prob_label, func_name, n, r, alpha, tr_proportion)
+        fname = '%s-%s-n%d_r%d_a%.3f.p' \
+                %(prob_label, func_name, n, r, alpha )
         glo.ex_save_result(ex, job_result, prob_label, fname)
 
 # This import is needed so that pickle knows about the class Ex1Job.
 # pickle is used when collecting the results from the submitted jobs.
 from kmod.ex.ex1_vary_n import Ex1Job
-from kmod.ex.ex1_vary_n import met_sc_umeJ1_rand
+from kmod.ex.ex1_vary_n import met_gumeJ1_2V_rand
+from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr50
+from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
 
 #--- experimental setting -----
 ex = 1
@@ -241,11 +338,13 @@ alpha = 0.05
 tr_proportion = 0.5
 
 # repetitions for each sample size 
-reps = 100
+reps = 10
 
 # tests to try
 method_funcs = [ 
-    met_sc_umeJ1_rand, 
+    met_gumeJ1_2V_rand, 
+    met_gumeJ1_2sopt_tr50,
+    met_gumeJ1_3sopt_tr50,
    ]
 
 # If is_rerun==False, do not rerun the experiment if a result file for the current
@@ -268,7 +367,7 @@ def get_ns_pqrsource(prob_label):
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
         # This is the simplest possible problem.
         'stdnormal_shift_d1': (
-            [200, 400, 600, 800],
+            [100, 300, 500],
             # p = N(1, 1)
             model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
             # q = N(0.5, 1). q is closer to r. Should reject.
@@ -315,8 +414,8 @@ def run_problem(prob_label):
             for mi, f in enumerate(method_funcs):
                 # name used to save the result
                 func_name = f.__name__
-                fname = '%s-%s-n%d_r%d_a%.3f_trp%.2f.p' \
-                        %(prob_label, func_name, n, r, alpha, tr_proportion)
+                fname = '%s-%s-n%d_r%d_a%.3f.p' \
+                        %(prob_label, func_name, n, r, alpha,)
                 if not is_rerun and glo.ex_file_exists(ex, prob_label, fname):
                     logger.info('%s exists. Load and return.'%fname)
                     job_result = glo.ex_load_result(ex, prob_label, fname)
@@ -361,14 +460,12 @@ def run_problem(prob_label):
             'P': P, 'Q': Q,
             'data_source': ds, 
             'alpha': alpha, 'repeats': reps, 'ns': ns,
-            'tr_proportion': tr_proportion,
             'method_funcs': method_funcs, 'prob_label': prob_label,
             }
     
     # class name 
-    fname = 'ex%d-%s-me%d_rs%d_nmi%d_nma%d_a%.3f_trp%.2f.p' \
-        %(ex, prob_label, n_methods, reps, min(ns), max(ns), alpha,
-                tr_proportion)
+    fname = 'ex%d-%s-me%d_rs%d_nmi%d_nma%d_a%.3f.p' \
+        %(ex, prob_label, n_methods, reps, min(ns), max(ns), alpha,)
 
     glo.ex_save_result(ex, results, fname)
     logger.info('Saved aggregated results to %s'%fname)

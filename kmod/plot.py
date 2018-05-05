@@ -16,30 +16,10 @@ def get_func_tuples():
         (func_name used in the experiments, label name, plot line style)
     """
     func_tuples = [
-            ('met_sc_umeJ1_rand', 'UME-rand J1', 'r--^'),
+            ('met_gumeJ1_2V_rand', 'UME-rand J1', 'r--^'),
+            ('met_gumeJ1_2sopt_tr50', 'UME-opt2 J1', 'r-h'),
+            ('met_gumeJ1_3sopt_tr50', 'UME-opt3 J1', 'r-.h'),
 
-            ('job_fssdJ1q_med', 'FSSD-rand J1', 'r--^'),
-            ('job_fssdJ5q_med', 'FSSD-rand', 'r--^'),
-            ('job_fssdq_med', 'FSSD-rand', 'r--^'),
-
-            ('job_fssdJ1q_opt', 'FSSD-opt J1', 'r-s'),
-            ('job_fssdq_opt', 'FSSD-opt', 'r-s'),
-            ('job_fssdJ5q_opt', 'FSSD-opt', 'r-s'),
-            ('job_fssdJ10q_opt', 'FSSD-opt', 'k-s'),
-
-            ('job_fssdJ5p_opt', 'FSSD-opt J5', 'm-s'),
-            ('job_fssdJ10p_opt', 'FSSDp-opt J10', 'k-s'),
-
-            ('job_fssdJ1q_opt2', 'FSSD-opt2 J1', 'b-^'),
-            ('job_fssdJ5q_opt2', 'FSSD-opt2 J5', 'r-^'),
-            ('job_me_opt', 'ME-opt', 'b-d'),
-
-            ('job_kstein_med', 'KSD', 'g-o'),
-            ('job_kstein_imq', 'KSD-IMQ', 'c-*'),
-            ('job_lin_kstein_med', 'LKS', 'g-.h'),
-            ('job_mmd_med', 'MMD', 'm--^'),
-            ('job_mmd_opt', 'MMD-opt', 'm-<'),
-            ('job_mmd_dgauss_opt', 'MMD-dopt', 'y-<'),
             ]
     return func_tuples
 
@@ -166,7 +146,7 @@ def plot_prob_reject(ex, fname, func_xvalues, xlabel, func_title=None,
     func_names = [f.__name__ for f in results['method_funcs'] ]
     plotted_methods = []
     for i in range(n_methods):    
-        te_proportion = 1.0 - results['tr_proportion']
+        #te_proportion = 1.0 - results['tr_proportion']
         fmt = line_styles[func_names[i]]
         #plt.errorbar(ns*te_proportion, mean_rejs[:, i], std_pvals[:, i])
         method_label = method_labels[func_names[i]]
@@ -222,7 +202,7 @@ def plot_runtime(ex, fname, func_xvalues, xlabel, func_title=None):
     
     func_names = [f.__name__ for f in results['method_funcs'] ]
     for i in range(n_methods):    
-        te_proportion = 1.0 - results['tr_proportion']
+        #te_proportion = 1.0 - results['tr_proportion']
         fmt = line_styles[func_names[i]]
         #plt.errorbar(ns*te_proportion, mean_rejs[:, i], std_pvals[:, i])
         method_label = method_labels[func_names[i]]
