@@ -15,7 +15,7 @@ import kgof.goftest as gof
 # freqopttest can be obtained from https://github.com/wittawatj/interpretable-test
 import freqopttest.tst as tst
 import freqopttest.data as tstdata
-from kmod import data, density, kernel, util
+from kmod import data, density, kernel, util, log
 #import matplotlib.pyplot as plt
 
 import scipy
@@ -270,8 +270,13 @@ class SC_UME(SCTest):
             # The variance is the same for both H0 and H1.
             mean_h1, var = self.get_H1_mean_variance(dat)
             stat = (n**0.5)*mean_h1
-            # Assume the mean of the null distribution is 0
-            pval = stats.norm.sf(stat, loc=0, scale=var**0.5)
+            null_std = var**0.5
+            if null_std <= 1e-5:
+                log.l().warning('SD of the null distribution is too small. Was {}. Will not reject H0.'.format(null_std))
+                pval = np.inf
+            else:
+                # Assume the mean of the null distribution is 0
+                pval = stats.norm.sf(stat, loc=0, scale=null_std)
 
         results = {'alpha': self.alpha, 'pvalue': pval, 'test_stat': stat,
                 'h0_rejected': pval < alpha, 'time_secs': t.secs, }
@@ -307,8 +312,13 @@ class SC_UME(SCTest):
                 return_variance=True, use_unbiased=True)
         umehq, var_qr = tst.UMETest.ustat_h1_mean_variance(fea_qr,
                 return_variance=True, use_unbiased=True)
-        assert var_pr > 0
-        assert var_qr > 0
+
+        if var_pr <= 0:
+            log.l().warning('Non-positive var_pr detected. Was {}'.format(var_pr))
+        if var_qr <= 0:
+            log.l().warning('Non-positive var_qr detected. War {}'.format(var_qr))
+        #assert var_pr > 0, 'var_pr was {}'.format(var_pr)
+        #assert var_qr > 0, 'var_qr was {}'.format(var_qr)
         mean_h1 = umehp - umehq
 
         if not return_variance:

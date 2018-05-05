@@ -17,8 +17,13 @@ def get_func_tuples():
     """
     func_tuples = [
             ('met_gumeJ1_2V_rand', 'UME-rand J1', 'r--^'),
-            ('met_gumeJ1_2sopt_tr50', 'UME-opt2 J1', 'r-h'),
+            ('met_gumeJ1_1V_rand', 'UME-rand J1 1V', 'y-'),
+            ('met_gumeJ2_2V_rand', 'UME-rand J2', 'g--^'),
+            ('met_gumeJ3_2V_rand', 'UME-rand J3', 'b--^'),
+            ('met_gumeJ5_2V_rand', 'UME-rand J5', 'k--^'),
+            ('met_gumeJ1_2sopt_tr50', 'UME-opt2 J1', 'r-'),
             ('met_gumeJ1_3sopt_tr50', 'UME-opt3 J1', 'r-.h'),
+            ('met_gmmd_med', 'MMD', 'm-<'),
 
             ]
     return func_tuples

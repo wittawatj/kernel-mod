@@ -123,7 +123,7 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
         # optimization options
         opt_options = {
             'max_iter': 100,
-            'reg': 1e-4,
+            'reg': 1e-3,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
             'gwidth_lb': None,
@@ -185,7 +185,7 @@ def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
         # optimization options
         opt_options = {
             'max_iter': 100,
-            'reg': 1e-4,
+            'reg': 1e-3,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
             'gwidth_lb': None,
@@ -205,6 +205,10 @@ def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             # of space, especially when the input dimension d is high.
             #'test':scume, 
             'test_result': scume_opt3_result, 'time_secs': t.secs}
+
+
+def met_gumeJ1_1V_rand(P, Q, data_source, n, r, J=1):
+    return met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=True)
 
 def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
     """
@@ -235,29 +239,45 @@ def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
 
         # containing 3*J points
         pool3J = np.vstack((X[:J, :], Y[:J, :], Z[:J, :]))
-        X, Y, Z = [np.delete(a, range(J), 0) for a in [X, Y, Z]]
+        X, Y, Z =  (X[J:, :], Y[J:, :], Z[J:, :])
+
         datp, datq, datr = [data.Data(a) for a in [X, Y, Z]]
         assert X.shape[0] == Y.shape[0]
         assert Y.shape[0] == Z.shape[0]
         assert Z.shape[0] == n-J
+        assert datp.sample_size() == n-J
+        assert datq.sample_size() == n-J
+        assert datr.sample_size() == n-J
 
-        if use_1set_locs:
-            # randomly select J points from the pool3J for the J test locations
-            V = util.subsample_rows(pool3J, J, r)
-            W = V
-        else:
-            # use two sets of locations: V and W
-            VW = util.subsample_rows(pool3J, 2*J, r)
-            V = VW[:J, :]
-            W = VW[J:, :]
+        #XYZ = np.vstack((X, Y, Z))
+        #stds = np.std(util.subsample_rows(XYZ, min(n-3*J, 500),
+        #    seed=r+87), axis=0)
+        d = X.shape[1]
+        # add a little noise to the locations. 
+        with util.NumpySeedContext(seed=r*191):
+            #pool3J = pool3J + np.random.randn(3*J, d)*np.max(stds)*3
+            pool3J = np.random.randn(3*J, d)*2
 
         # median heuristic to set the Gaussian widths
         medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
         medyz = util.meddistance(np.vstack((Z, Y)), subsample=1000)
+        if use_1set_locs:
+            # randomly select J points from the pool3J for the J test locations
+            #V = util.subsample_rows(pool3J, J, r)
+            V = pool3J[:J, :]
+            W = V
+            k = kernel.KGauss(sigma2=np.mean([medxz, medyz])**2)
+            l = k
+        else:
+            # use two sets of locations: V and W
+            #VW = util.subsample_rows(pool3J, 2*J, r)
+            VW = pool3J[:2*J, :]
+            V = VW[:J, :]
+            W = VW[J:, :]
 
-        # 2 Gaussian kernels
-        k = kernel.KGauss(sigma2=medxz**2)
-        l = kernel.KGauss(sigma2=medyz**2)
+            # 2 Gaussian kernels
+            k = kernel.KGauss(sigma2=medxz**2)
+            l = kernel.KGauss(sigma2=medyz**2)
 
         # construct the test
         scume = mct.SC_UME(datp, datq, k, l, V, W, alpha=alpha)
@@ -269,6 +289,42 @@ def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
             #'test':scume, 
             'test_result': scume_rand_result, 'time_secs': t.secs}
 
+
+def met_gmmd_med(P, Q, data_source, n, r):
+    """
+    Bounliphone et al., 2016's MMD-based 3-sample test.
+    * Gaussian kernel. 
+    * Gaussian width = mean of (median heuristic on (X, Z), median heuristic on
+        (Y, Z))
+    * Use full sample for testing (no
+    holding out for optimization)
+    """
+    if not P.has_datasource() or not Q.has_datasource():
+        # Not applicable. Return {}.
+        return {}
+
+    ds_p = P.get_datasource()
+    ds_q = Q.get_datasource()
+    # sample some data 
+    datp, datq, datr = sample_pqr(ds_p, ds_q, data_source, n, r, only_from_r=False)
+
+    # Start the timer here
+    with util.ContextTimer() as t:
+        X, Y, Z = datp.data(), datq.data(), datr.data()
+
+        # hyperparameters of the test
+        medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
+        medyz = util.meddistance(np.vstack((Y, Z)), subsample=1000)
+        medxyz = np.mean([medxz, medyz])
+        k = kernel.KGauss(sigma2=medxyz**2)
+
+        scmmd = mct.SC_MMD(datp, datq, k, alpha=alpha)
+        scmmd_result = scmmd.perform_test(datr)
+
+    return {
+            # This key "test" can be removed.             
+            'test': scmmd, 
+            'test_result': scmmd_result, 'time_secs': t.secs}
 
 # Define our custom Job, which inherits from base class IndependentJob
 class Ex1Job(IndependentJob):
@@ -299,7 +355,6 @@ class Ex1Job(IndependentJob):
         r = self.rep
         n = self.n
         met_func = self.met_func
-        data = data_source.sample(n, seed=r)
         prob_label = self.prob_label
 
         logger.info("computing. %s. prob=%s, r=%d,\
@@ -325,8 +380,10 @@ class Ex1Job(IndependentJob):
 # pickle is used when collecting the results from the submitted jobs.
 from kmod.ex.ex1_vary_n import Ex1Job
 from kmod.ex.ex1_vary_n import met_gumeJ1_2V_rand
+from kmod.ex.ex1_vary_n import met_gumeJ1_1V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr50
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
+from kmod.ex.ex1_vary_n import met_gmmd_med
 
 #--- experimental setting -----
 ex = 1
@@ -338,13 +395,15 @@ alpha = 0.05
 tr_proportion = 0.5
 
 # repetitions for each sample size 
-reps = 10
+reps = 100
 
 # tests to try
 method_funcs = [ 
-    met_gumeJ1_2V_rand, 
+    #met_gumeJ1_2V_rand, 
+    met_gumeJ1_1V_rand, 
     met_gumeJ1_2sopt_tr50,
     met_gumeJ1_3sopt_tr50,
+    met_gmmd_med,
    ]
 
 # If is_rerun==False, do not rerun the experiment if a result file for the current
@@ -364,19 +423,45 @@ def get_ns_pqrsource(prob_label):
     """
 
     prob2tuples = { 
+        # A case where H0 (P is better) is true. All standard normal models.
+        'stdnormal_h0_d1': (
+            [100, 300, 500],
+
+            # p is closer. Should not reject.
+            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
+            # q 
+            model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
+            # data generating distribution r = N(0, 1)
+            data.DSIsotropicNormal(np.array([0.0]), 1.0),
+            ),
+
+        # H0 is true.
+        'stdnormal_h0_d5': (
+            [100, 300, 500],
+
+            # p is closer. Should not reject.
+            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]*5), 1.0)),
+            # q 
+            model.ComposedModel(p=density.IsotropicNormal(np.array([1.0]*5), 1.0)),
+            # data generating distribution r = N(0, 1)
+            data.DSIsotropicNormal(np.zeros(5), 1.0),
+            ),
+
+
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
         # This is the simplest possible problem.
         'stdnormal_shift_d1': (
             [100, 300, 500],
+
             # p = N(1, 1)
             model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
             # q = N(0.5, 1). q is closer to r. Should reject.
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]), 1.0),
-        ),
+            ),
 
-    }
+        } # end of prob2tuples
     if prob_label not in prob2tuples:
         raise ValueError('Unknown problem label. Need to be one of %s'%str(list(prob2tuples.keys()) ))
     return prob2tuples[prob_label]
