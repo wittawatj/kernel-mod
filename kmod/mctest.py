@@ -424,14 +424,11 @@ class SC_GaussUME(SC_UME):
         X, Y, Z = datap.data(), dataq.data(), datar.data()
         n, d = X.shape
 
-        W0 = np.ones((J, d))
-
         # Parameterize the Gaussian width with its square root (then square later)
         # to automatically enforce the positivity.
         def obj(sqrt_gwidth, V):
             k = kernel.KGauss(sqrt_gwidth**2)
-            l = kernel.KGauss(2.0)
-            return -SC_UME.power_criterion(datap, dataq, datar, k, k, V, W0,
+            return -SC_UME.power_criterion(datap, dataq, datar, k, k, V, V,
                     reg=reg)
 
         flatten = lambda gwidth, V: np.hstack((gwidth, V.reshape(-1)))
