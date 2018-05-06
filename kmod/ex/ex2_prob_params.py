@@ -48,6 +48,8 @@ All the method functions take the following mandatory inputs:
           from R)
     - n: total sample size. Each method function should draw exactly the number
           of points from data_source.
+    #- prob_param: the problem parameter that is being varied. This is mainly
+    #      used for file namng.
     - r: repetition (trial) index. Drawing samples should make use of r to
           set the random seed.
     -------
@@ -148,6 +150,10 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             # of space, especially when the input dimension d is high.
             #'test':scume, 
             'test_result': scume_opt2_result, 'time_secs': t.secs}
+
+def met_gumeJ5_3sopt_tr50(P, Q, data_source, n, r, tr_proportion=0.5):
+    return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=5,
+            tr_proportion=tr_proportion)
 
 def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
@@ -327,9 +333,10 @@ def met_gmmd_med(P, Q, data_source, n, r):
             'test_result': scmmd_result, 'time_secs': t.secs}
 
 # Define our custom Job, which inherits from base class IndependentJob
-class Ex1Job(IndependentJob):
+class Ex2Job(IndependentJob):
    
-    def __init__(self, aggregator, P, Q, data_source, prob_label, rep, met_func, n):
+    def __init__(self, aggregator, P, Q, data_source, prob_param, prob_label,
+            rep, met_func, n):
         #walltime = 60*59*24 
         walltime = 60*59
         memory = int(n*1e-2) + 50
@@ -340,6 +347,7 @@ class Ex1Job(IndependentJob):
         self.P = P
         self.Q = Q
         self.data_source = data_source
+        self.prob_param = prob_param
         self.prob_label = prob_label
         self.rep = rep
         self.met_func = met_func
@@ -352,6 +360,7 @@ class Ex1Job(IndependentJob):
         P = self.P
         Q = self.Q
         data_source = self.data_source 
+        param = self.prob_param
         r = self.rep
         n = self.n
         met_func = self.met_func
@@ -368,31 +377,32 @@ class Ex1Job(IndependentJob):
             self.aggregator.submit_result(result)
             func_name = met_func.__name__
 
-        logger.info("done. ex2: %s, prob=%s, r=%d, n=%d. Took: %.3g s "%(func_name,
-            prob_label, r, n, t.secs))
+        logger.info("done. ex2: %s, prob=%s, r=%d, n=%d, param: %g. Took: %.3g s "%(func_name,
+            prob_label, r, n, param, t.secs))
 
         # save result
-        fname = '%s-%s-n%d_r%d_a%.3f.p' \
-                %(prob_label, func_name, n, r, alpha )
+        fname = '%s-%s-n%d_r%d_p%g_a%.3f.p' \
+                %(prob_label, func_name, n, r, param, alpha,)
         glo.ex_save_result(ex, job_result, prob_label, fname)
 
-# This import is needed so that pickle knows about the class Ex1Job.
+# This import is needed so that pickle knows about the class Ex2Job.
 # pickle is used when collecting the results from the submitted jobs.
-from kmod.ex.ex1_vary_n import Ex1Job
-from kmod.ex.ex1_vary_n import met_gumeJ1_2V_rand
-from kmod.ex.ex1_vary_n import met_gumeJ1_1V_rand
-from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr50
-from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
-from kmod.ex.ex1_vary_n import met_gmmd_med
+from kmod.ex.ex2_prob_params import Ex2Job
+from kmod.ex.ex2_prob_params import met_gumeJ1_2V_rand
+from kmod.ex.ex2_prob_params import met_gumeJ1_1V_rand
+from kmod.ex.ex2_prob_params import met_gumeJ1_2sopt_tr50
+from kmod.ex.ex2_prob_params import met_gumeJ1_3sopt_tr50
+from kmod.ex.ex2_prob_params import met_gumeJ5_3sopt_tr50
+from kmod.ex.ex2_prob_params import met_gmmd_med
 
 #--- experimental setting -----
-ex = 1
+ex = 2
 
 # significance level of the test
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 200
+reps = 20
 
 # tests to try
 method_funcs = [ 
@@ -400,6 +410,7 @@ method_funcs = [
     met_gumeJ1_1V_rand, 
     met_gumeJ1_2sopt_tr50,
     met_gumeJ1_3sopt_tr50,
+    met_gumeJ5_3sopt_tr50,
     met_gmmd_med,
    ]
 
@@ -408,80 +419,30 @@ method_funcs = [
 is_rerun = False
 #---------------------------
 
-def get_ns_pqrsource(prob_label):
+def get_n_pqrsources(prob_label):
     """
-    Return (ns, P, Q, ds), a tuple of
-    - ns: a list of sample sizes n's
-    - P: a kmod.model.Model representing the model P
-    - Q: a kmod.model.Model representing the model Q
-    - ds: a DataSource. The DataSource generates sample from R.
+    Return (n, [ (param, P, Q, ds) for ...] = a sample size and a list of tuples,
+    - n: a sample size recommended for the problem
+    - param: a parameter being varied
+    - P: a kmod.model.Model representing the model P (may depend on param)
+    - Q: a kmod.model.Model representing the model Q (may depend on param)
+    - ds: a DataSource. The DataSource generates sample from R (may depend on param).
 
     * (P, Q, ds) together specity a three-sample (or model comparison) problem.
     """
 
     prob2tuples = { 
-        # A case where H0 (P is better) is true. All standard normal models.
-        'stdnorm_h0_d1': (
-            [100, 300, 500],
-
-            # p is closer. Should not reject.
-            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
-            # q 
-            model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
-            # data generating distribution r = N(0, 1)
-            data.DSIsotropicNormal(np.array([0.0]), 1.0),
-            ),
-
-        # H0 is true.
-        'stdnorm_h0_d5': (
-            [100, 300, 500, 700],
-
-            # p is closer. Should not reject.
-            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]*5), 1.0)),
-            # q 
-            model.ComposedModel(p=density.IsotropicNormal(np.array([1.0]*5), 1.0)),
-            # data generating distribution r = N(0, 1)
-            data.DSIsotropicNormal(np.zeros(5), 1.0),
-            ),
-
-        # H0 is true.
-        'stdnorm_h0_d50': (
-            [400, 800, 1200, 1600],
-
-            # p is closer. Should not reject.
-            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]*50), 1.0)),
-            # q 
-            model.ComposedModel(p=density.IsotropicNormal(np.array([1.0]*50), 1.0)),
-            # data generating distribution r = N(0, 1)
-            data.DSIsotropicNormal(np.zeros(50), 1.0),
-            ),
-
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
-        # This is the simplest possible problem.
         'stdnorm_shift_d1': (
-            [100, 300, 500],
-
-            # p = N(1, 1)
-            model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
-            # q = N(0.5, 1). q is closer to r. Should reject.
+            300,
+            [(mp, 
+                # p
+            model.ComposedModel(p=density.IsotropicNormal(np.array([mp]), 1.0)),
+            # q = N(0.5, 1). p is intially closer to r. Then moves further away.
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]), 1.0),
-            ),
-
-        'stdnorm_shift_d20': (
-            [200, 400, 600],
-
-            # p = N([1, 0, 0, ], 1)
-            model.ComposedModel(p=density.IsotropicNormal(
-                np.hstack((1, np.zeros(19))),
-                1.0)),
-            # q is closer to r. Should reject.
-            model.ComposedModel(p=density.IsotropicNormal(
-                np.hstack((0.5, np.zeros(19))), 
-                1.0)),
-            # data generating distribution r = N(0, 1)
-            data.DSIsotropicNormal(np.array([0.0]), 1.0),
+                ) for mp in [0.2, 0.3, 0.4, 0.6, 0.7, 0.8] ]
             ),
 
         } # end of prob2tuples
@@ -512,32 +473,33 @@ def run_problem(prob_label):
     n_methods = len(method_funcs)
 
     # problem setting
-    ns, P, Q, ds, = get_ns_pqrsource(prob_label)
+    n, probs_sequence = get_n_pqrsources(prob_label)
+    params, Ps, Qs, dss = zip(*probs_sequence)
 
-    # repetitions x len(ns) x #methods
-    aggregators = np.empty((reps, len(ns), n_methods ), dtype=object)
+    # repetitions x len(params) x #methods
+    aggregators = np.empty((reps, len(params), n_methods ), dtype=object)
 
     for r in range(reps):
-        for ni, n in enumerate(ns):
+        for pi, param in enumerate(params):
             for mi, f in enumerate(method_funcs):
                 # name used to save the result
                 func_name = f.__name__
-                fname = '%s-%s-n%d_r%d_a%.3f.p' \
-                        %(prob_label, func_name, n, r, alpha,)
+                fname = '%s-%s-n%d_r%d_p%g_a%.3f.p' \
+                        %(prob_label, func_name, n, r, param, alpha,)
                 if not is_rerun and glo.ex_file_exists(ex, prob_label, fname):
                     logger.info('%s exists. Load and return.'%fname)
                     job_result = glo.ex_load_result(ex, prob_label, fname)
 
                     sra = SingleResultAggregator()
                     sra.submit_result(SingleResult(job_result))
-                    aggregators[r, ni, mi] = sra
+                    aggregators[r, pi, mi] = sra
                 else:
                     # result not exists or rerun
-                    job = Ex1Job(SingleResultAggregator(), P, Q, ds, prob_label,
-                            r, f, n)
+                    job = Ex2Job(SingleResultAggregator(), Ps[pi], Qs[pi], dss[pi],
+                            param, prob_label, r, f, n)
 
                     agg = engine.submit_job(job)
-                    aggregators[r, ni, mi] = agg
+                    aggregators[r, pi, mi] = agg
 
     # let the engine finish its business
     logger.info("Wait for all call in engine")
@@ -545,35 +507,35 @@ def run_problem(prob_label):
 
     # ////// collect the results ///////////
     logger.info("Collecting results")
-    job_results = np.empty((reps, len(ns), n_methods), dtype=object)
+    job_results = np.empty((reps, len(params), n_methods), dtype=object)
     for r in range(reps):
-        for ni, n in enumerate(ns):
+        for pi, n in enumerate(params):
             for mi, f in enumerate(method_funcs):
                 logger.info("Collecting result (%s, r=%d, n=%d)" %
                         (f.__name__, r, n))
                 # let the aggregator finalize things
-                aggregators[r, ni, mi].finalize()
+                aggregators[r, pi, mi].finalize()
 
                 # aggregators[i].get_final_result() returns a SingleResult instance,
                 # which we need to extract the actual result
-                job_result = aggregators[r, ni, mi].get_final_result().result
-                job_results[r, ni, mi] = job_result
+                job_result = aggregators[r, pi, mi].get_final_result().result
+                job_results[r, pi, mi] = job_result
 
     #func_names = [f.__name__ for f in method_funcs]
     #func2labels = exglobal.get_func2label_map()
     #method_labels = [func2labels[f] for f in func_names if f in func2labels]
 
     # save results 
-    results = {'job_results': job_results, 
-            'P': P, 'Q': Q,
-            'data_source': ds, 
-            'alpha': alpha, 'repeats': reps, 'ns': ns,
+    results = {'job_results': job_results, 'prob_params': params,
+            'ps': Ps, 'qs': Qs, 
+            'list_data_source': dss, 'sample_size': n,
+            'alpha': alpha, 'repeats': reps, 
             'method_funcs': method_funcs, 'prob_label': prob_label,
             }
     
     # class name 
-    fname = 'ex%d-%s-me%d_rs%d_nmi%d_nma%d_a%.3f.p' \
-        %(ex, prob_label, n_methods, reps, min(ns), max(ns), alpha,)
+    fname = 'ex%d-%s-me%d_rs%d_pmi%g_pma%g_a%.3f.p' \
+        %(ex, prob_label, n_methods, reps, min(params), max(params), alpha,)
 
     glo.ex_save_result(ex, results, fname)
     logger.info('Saved aggregated results to %s'%fname)
