@@ -206,7 +206,8 @@ class DC_FSSD(DCTest):
         muq = np.mean(Tauq, 0)
         varpq = 4.0*np.mean(np.dot(Taup, mup)*np.dot(Tauq, muq) ) - 4.0*np.sum(mup**2)*np.sum(muq**2)
         variance = varp - 2.0*varpq + varq
-        assert variance > 0, 'variance of the stat is negative. Was {}'.format(variance)
+        if variance <= 0:
+            log.l().warning('variance of the stat is not positive. Was {}'.format(variance))
         return mean_h1, variance
 
 # end of MCFSSD

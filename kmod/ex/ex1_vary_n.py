@@ -395,7 +395,7 @@ alpha = 0.05
 tr_proportion = 0.5
 
 # repetitions for each sample size 
-reps = 100
+reps = 200
 
 # tests to try
 method_funcs = [ 
@@ -424,7 +424,7 @@ def get_ns_pqrsource(prob_label):
 
     prob2tuples = { 
         # A case where H0 (P is better) is true. All standard normal models.
-        'stdnormal_h0_d1': (
+        'stdnorm_h0_d1': (
             [100, 300, 500],
 
             # p is closer. Should not reject.
@@ -436,8 +436,8 @@ def get_ns_pqrsource(prob_label):
             ),
 
         # H0 is true.
-        'stdnormal_h0_d5': (
-            [100, 300, 500],
+        'stdnorm_h0_d5': (
+            [100, 300, 500, 700],
 
             # p is closer. Should not reject.
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]*5), 1.0)),
@@ -447,16 +447,42 @@ def get_ns_pqrsource(prob_label):
             data.DSIsotropicNormal(np.zeros(5), 1.0),
             ),
 
+        # H0 is true.
+        'stdnorm_h0_d50': (
+            [400, 800, 1200, 1600],
+
+            # p is closer. Should not reject.
+            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]*50), 1.0)),
+            # q 
+            model.ComposedModel(p=density.IsotropicNormal(np.array([1.0]*50), 1.0)),
+            # data generating distribution r = N(0, 1)
+            data.DSIsotropicNormal(np.zeros(50), 1.0),
+            ),
 
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
         # This is the simplest possible problem.
-        'stdnormal_shift_d1': (
+        'stdnorm_shift_d1': (
             [100, 300, 500],
 
             # p = N(1, 1)
             model.ComposedModel(p=density.IsotropicNormal(np.array([1]), 1.0)),
             # q = N(0.5, 1). q is closer to r. Should reject.
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
+            # data generating distribution r = N(0, 1)
+            data.DSIsotropicNormal(np.array([0.0]), 1.0),
+            ),
+
+        'stdnorm_shift_d20': (
+            [200, 400, 600],
+
+            # p = N([1, 0, 0, ], 1)
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((1, np.zeros(19))),
+                1.0)),
+            # q is closer to r. Should reject.
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((0.5, np.zeros(19))), 
+                1.0)),
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]), 1.0),
             ),
