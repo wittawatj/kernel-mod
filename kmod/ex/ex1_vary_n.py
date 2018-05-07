@@ -323,7 +323,7 @@ def met_gmmd_med(P, Q, data_source, n, r):
 
     return {
             # This key "test" can be removed.             
-            'test': scmmd, 
+            #'test': scmmd, 
             'test_result': scmmd_result, 'time_secs': t.secs}
 
 # Define our custom Job, which inherits from base class IndependentJob
@@ -397,7 +397,7 @@ reps = 200
 # tests to try
 method_funcs = [ 
     #met_gumeJ1_2V_rand, 
-    met_gumeJ1_1V_rand, 
+    #met_gumeJ1_1V_rand, 
     met_gumeJ1_2sopt_tr50,
     met_gumeJ1_3sopt_tr50,
     met_gmmd_med,
@@ -422,7 +422,7 @@ def get_ns_pqrsource(prob_label):
     prob2tuples = { 
         # A case where H0 (P is better) is true. All standard normal models.
         'stdnorm_h0_d1': (
-            [100, 300, 500],
+            [100, 400, 700, 1000],
 
             # p is closer. Should not reject.
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
@@ -470,7 +470,7 @@ def get_ns_pqrsource(prob_label):
             ),
 
         'stdnorm_shift_d20': (
-            [200, 400, 600],
+            [100, 200, 300, 400],
 
             # p = N([1, 0, 0, ], 1)
             model.ComposedModel(p=density.IsotropicNormal(
@@ -478,10 +478,10 @@ def get_ns_pqrsource(prob_label):
                 1.0)),
             # q is closer to r. Should reject.
             model.ComposedModel(p=density.IsotropicNormal(
-                np.hstack((0.5, np.zeros(19))), 
+                np.hstack((0.8, np.zeros(19))), 
                 1.0)),
             # data generating distribution r = N(0, 1)
-            data.DSIsotropicNormal(np.array([0.0]), 1.0),
+            data.DSIsotropicNormal(np.array([0.0]*20), 1.0),
             ),
 
         } # end of prob2tuples
@@ -506,8 +506,8 @@ def run_problem(prob_label):
         foldername=foldername, job_name_base="e%d_"%ex, parameter_prefix="")
 
     # Use the following line if Slurm queue is not used.
-    engine = SerialComputationEngine()
-    #engine = SlurmComputationEngine(batch_parameters, partition='wrkstn,compute')
+    #engine = SerialComputationEngine()
+    engine = SlurmComputationEngine(batch_parameters, partition='wrkstn,compute')
     #engine = SlurmComputationEngine(batch_parameters)
     n_methods = len(method_funcs)
 

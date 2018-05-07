@@ -402,7 +402,7 @@ ex = 2
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 20
+reps = 100
 
 # tests to try
 method_funcs = [ 
@@ -410,7 +410,7 @@ method_funcs = [
     met_gumeJ1_1V_rand, 
     met_gumeJ1_2sopt_tr50,
     met_gumeJ1_3sopt_tr50,
-    met_gumeJ5_3sopt_tr50,
+    #met_gumeJ5_3sopt_tr50,
     met_gmmd_med,
    ]
 
@@ -434,7 +434,7 @@ def get_n_pqrsources(prob_label):
     prob2tuples = { 
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
         'stdnorm_shift_d1': (
-            300,
+            500,
             [(mp, 
                 # p
             model.ComposedModel(p=density.IsotropicNormal(np.array([mp]), 1.0)),
@@ -442,7 +442,7 @@ def get_n_pqrsources(prob_label):
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]), 1.0),
-                ) for mp in [0.2, 0.3, 0.4, 0.6, 0.7, 0.8] ]
+                ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
             ),
 
         } # end of prob2tuples
@@ -467,8 +467,8 @@ def run_problem(prob_label):
         foldername=foldername, job_name_base="e%d_"%ex, parameter_prefix="")
 
     # Use the following line if Slurm queue is not used.
-    engine = SerialComputationEngine()
-    #engine = SlurmComputationEngine(batch_parameters, partition='wrkstn,compute')
+    #engine = SerialComputationEngine()
+    engine = SlurmComputationEngine(batch_parameters, partition='wrkstn,compute')
     #engine = SlurmComputationEngine(batch_parameters)
     n_methods = len(method_funcs)
 
@@ -509,10 +509,10 @@ def run_problem(prob_label):
     logger.info("Collecting results")
     job_results = np.empty((reps, len(params), n_methods), dtype=object)
     for r in range(reps):
-        for pi, n in enumerate(params):
+        for pi, param in enumerate(params):
             for mi, f in enumerate(method_funcs):
-                logger.info("Collecting result (%s, r=%d, n=%d)" %
-                        (f.__name__, r, n))
+                logger.info("Collecting result (%s, r=%d, param=%d)" %
+                        (f.__name__, r, param))
                 # let the aggregator finalize things
                 aggregators[r, pi, mi].finalize()
 
@@ -534,8 +534,8 @@ def run_problem(prob_label):
             }
     
     # class name 
-    fname = 'ex%d-%s-me%d_rs%d_pmi%g_pma%g_a%.3f.p' \
-        %(ex, prob_label, n_methods, reps, min(params), max(params), alpha,)
+    fname = 'ex%d-%s-me%d_n%d_rs%d_pmi%g_pma%g_a%.3f.p' \
+        %(ex, prob_label, n_methods, n, reps, min(params), max(params), alpha,)
 
     glo.ex_save_result(ex, results, fname)
     logger.info('Saved aggregated results to %s'%fname)
