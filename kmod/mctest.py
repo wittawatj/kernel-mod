@@ -689,7 +689,7 @@ class SC_MMD(SCTest):
         # ct5 = (1/(m*(m-1)*n))       * sum(sum(Kzznd*Kxy));
         ct6 = u_zz * u_zx
         # ct6 = u_xx*u_xy;
-        ct7 = (1/(nx*nz*ny)) * np.sum(np.dot(Kzx.T, Kzy))
+        ct7 = (1./(nx*nz*ny)) * np.sum(np.dot(Kzx.T, Kzy))
         # ct7 = (1/(n*m*r))           * sum(sum(Kzx'*Kxz));
         ct8 = u_zx * u_zy
         # ct8 = u_xy*u_xz;
