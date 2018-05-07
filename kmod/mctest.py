@@ -559,11 +559,11 @@ class SC_GaussUME(SC_UME):
 
 class SC_MMD(SCTest):
     """
-    A test for model comparison using the Maximum Mean Discrepancy (MMD) proposed 
-    by Bounliphone, et al 2016 (ICLR)
+    A test for model comparison using the Maximum Mean Discrepancy (MMD)
+    proposed by Bounliphone, et al 2016 (ICLR)
     """
 
-    def __init__(self, datap, dataq, k, alpha):
+    def __init__(self, datap, dataq, k, alpha=0.01):
         """
         :param datap: a kmod.data.Data object representing an i.i.d. sample X
             (from model 1)
@@ -576,7 +576,8 @@ class SC_MMD(SCTest):
         self.k = k
 
     def perform_test(self, dat):
-        """perform the model comparison test and return values computed in a dictionary:
+        """perform the model comparison test and return values computed in a
+        dictionary: 
         {
             alpha: 0.01,
             pvalue: 0.0002,
@@ -616,7 +617,8 @@ class SC_MMD(SCTest):
     def get_H1_mean_variance(self, dat, return_variance=True):
         """
         Return the mean and variance under H1 of the 
-        test statistic = (MMD_u(Z_{n_z}, X_{n_x})^2 - MMD_u(Z_{n_z}, Y_{n_y})^2)^2.
+        test statistic = 
+            sqrt(n)*(MMD_u(Z_{n_z}, X_{n_x})^2 - MMD_u(Z_{n_z}, Y_{n_y})^2)^2.
         The estimator of the mean is unbiased (can be negative). The estimator
         of the variance is also unbiased. The variance is also valid under H0.
 
@@ -624,6 +626,7 @@ class SC_MMD(SCTest):
         """
         # form a two-sample test dataset between datap and dat (data from R)
         Z = dat.data()
+        n = Z.shape[0]
         X = self.datap.data()
         Y = self.dataq.data()
         # This always return a variance. But will be None if is_var_computed=False
@@ -636,8 +639,13 @@ class SC_MMD(SCTest):
             return mean_h1
 
         var_pqr = self.get_cross_covariance(X, Y, Z, self.k)
+        #print(var_pqr)
+
+        # This variance actually carries 1/n factor i.e., it goes to 0.
+        # We want the variance of sqrt(n)*(MMD difference). Need to remove 1/n
+        # factor.
         var_h1 = var_pr - 2.0*var_pqr + var_qr
-        return mean_h1, var_h1
+        return mean_h1, n*var_h1
 
     @staticmethod
     def get_cross_covariance(X, Y, Z, k):
@@ -698,6 +706,7 @@ class SC_MMD(SCTest):
         # zeta_1 = (ct1-ct2)-(ct3-ct4)-(ct5-ct6)+(ct7-ct8);
         cov = (4.0*(nz-2))/(nz*(nz-1)) * zeta_1
         # theCov = (4*(m-2))/(m*(m-1)) * zeta_1;
+
         return cov    
 
-# end of class SC_UME
+# end of class SC_MMD

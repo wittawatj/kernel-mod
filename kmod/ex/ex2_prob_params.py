@@ -155,6 +155,9 @@ def met_gumeJ5_3sopt_tr50(P, Q, data_source, n, r, tr_proportion=0.5):
     return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=5,
             tr_proportion=tr_proportion)
 
+def met_gumeJ1_3sopt_tr20(P, Q, data_source, n, r, J=1):
+    return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
+
 def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
     UME-based three-sample tespt
@@ -392,6 +395,7 @@ from kmod.ex.ex2_prob_params import met_gumeJ1_2V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_1V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_2sopt_tr50
 from kmod.ex.ex2_prob_params import met_gumeJ1_3sopt_tr50
+from kmod.ex.ex2_prob_params import met_gumeJ1_3sopt_tr20
 from kmod.ex.ex2_prob_params import met_gumeJ5_3sopt_tr50
 from kmod.ex.ex2_prob_params import met_gmmd_med
 
@@ -402,13 +406,14 @@ ex = 2
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 100
+reps = 50
 
 # tests to try
 method_funcs = [ 
     #met_gumeJ1_2V_rand, 
     met_gumeJ1_1V_rand, 
-    met_gumeJ1_2sopt_tr50,
+    #met_gumeJ1_2sopt_tr50,
+    met_gumeJ1_3sopt_tr20,
     met_gumeJ1_3sopt_tr50,
     #met_gumeJ5_3sopt_tr50,
     met_gmmd_med,
@@ -434,7 +439,7 @@ def get_n_pqrsources(prob_label):
     prob2tuples = { 
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
         'stdnorm_shift_d1': (
-            500,
+            300,
             [(mp, 
                 # p
             model.ComposedModel(p=density.IsotropicNormal(np.array([mp]), 1.0)),
@@ -442,6 +447,23 @@ def get_n_pqrsources(prob_label):
             model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]), 1.0)),
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]), 1.0),
+                ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
+            ),
+
+        # p,q,r all standard normal in 10d. Mean shift problem. Unit variance.
+        'stdnorm_shift_d10': (
+            300,
+            [(mp, 
+                # p
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((mp, [0.0]*9)), 
+                1.0)),
+            # q = N([0.5, ..], 1). p is intially closer to r. Then moves further away.
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((0.5, [0.0]*9)), 
+                1.0)),
+            # data generating distribution r = N(0, 1)
+            data.DSIsotropicNormal(np.zeros(10), 1.0),
                 ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
             ),
 

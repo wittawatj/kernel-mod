@@ -22,6 +22,7 @@ def get_func_tuples():
             ('met_gumeJ3_2V_rand', 'UME-rand J3', 'b--^'),
             ('met_gumeJ5_2V_rand', 'UME-rand J5', 'k--^'),
             ('met_gumeJ1_2sopt_tr50', 'UME-opt2 J1', 'r-.h'),
+            ('met_gumeJ1_3sopt_tr20', 'UME-opt3 J1 20%%', 'g-'),
             ('met_gumeJ1_3sopt_tr50', 'UME-opt3 J1', 'r-'),
             ('met_gumeJ5_3sopt_tr50', 'UME-opt3 J5', 'k-'),
             ('met_gmmd_med', 'MMD', 'm-<'),
