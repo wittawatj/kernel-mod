@@ -263,7 +263,7 @@ class DC_GaussFSSD(DC_FSSD):
     @staticmethod
     def optimize_power_criterion(p, q, datar, V0, gwidth0, reg=1e-3,
             max_iter=100, tol_fun=1e-6, disp=False, locs_bounds_frac=100,
-            gwidth_lb=None, gwidth_ub=None):
+            gwidth_lb=None, gwidth_ub=None, added_obj=None):
         """
         Optimize one set of test locations and one Gaussian kernel width by
         maximizing the test power criterion of the FSSD model comparison test
@@ -285,6 +285,9 @@ class DC_GaussFSSD(DC_FSSD):
               coordinate (of the aggregated data) multiplied by this number.
         - gwidth_lb: absolute lower bound on both the Gaussian width^2
         - gwidth_ub: absolute upper bound on both the Gaussian width^2
+        - added_obj: a function (gwidth2, V) |-> real number as a extra
+              additive term to maximize along with the power criterion. None by
+              default.
 
         If the lb, ub bounds are None, use fraction of the median heuristics 
             to automatically set the bounds.
@@ -300,8 +303,12 @@ class DC_GaussFSSD(DC_FSSD):
         def obj(sqrt_gwidth, V):
             gwidth2 = sqrt_gwidth**2
             k = kernel.KGauss(gwidth2)
-            return -DC_FSSD.power_criterion(p, q, datar, k, k, V, V,
-                    reg=reg)
+            if added_obj is None:
+                return -DC_FSSD.power_criterion(p, q, datar, k, k, V, V,
+                        reg=reg)
+            else:
+                return -(DC_FSSD.power_criterion(p, q, datar, k, k, V, V,
+                        reg=reg) + added_obj(gwidth2, V))
 
         flatten = lambda gwidth, V: np.hstack((gwidth, V.reshape(-1)))
         def unflatten(x):
