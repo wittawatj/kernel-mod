@@ -210,6 +210,27 @@ class DC_FSSD(DCTest):
             log.l().warning('variance of the stat is not positive. Was {}'.format(variance))
         return mean_h1, variance
 
+    @staticmethod
+    def power_criterion(p, q, datar, k, l, V, W, reg=1e-3):
+        """"
+        Compute the power criterion of the FSSD-based model comparison test .
+
+        :param p: kgof.density.UnnormalizedDensity. model 1
+        :param q: kgof.density.UnnormalizedDensity. model 2
+        :param datar: kgof.data.Data. data from R (data generating distribution)
+        :param k: differentiable kernel for FSSD(P, R)
+        :param l: differentiable kernel for FSSD(Q, R)
+        :param V: Jp x d numpy array of Jp test locations for FSSD(P, R)
+        :param W: Jq x d numpy array of Jq test locations for FSSD(Q, R)
+        :param reg: regularization parameter
+        
+        Return power criterion = mean_under_H1/sqrt(var_under_H1 + reg) .
+        """
+        dcfssd = DC_FSSD(p, q, k, l, V, W)
+        mean_h1, var_h1 = dcfssd.get_H1_mean_variance(datar)
+        ratio = mean_h1/np.sqrt(var_h1 + reg)
+        return ratio
+
 # end of DC_FSSD
 
 class DC_GaussFSSD(DC_FSSD):
@@ -218,7 +239,7 @@ class DC_GaussFSSD(DC_FSSD):
     (FSSD) as the base discrepancy measure. A special case of DC_FSSD where 
     a Gaussian kernel is used.
     """
-    def __init__(self, datap, dataq, gwidth2p, gwidth2q, V, W, alpha=0.01):
+    def __init__(self, p, q, gwidth2p, gwidth2q, V, W, alpha=0.01):
         """
         :param p: a kmod.density.UnnormalizedDensity (model 1)
         :param q: a kmod.density.UnnormalizedDensity (model 2)
@@ -236,7 +257,111 @@ class DC_GaussFSSD(DC_FSSD):
 
         k = kernel.KGauss(gwidth2p)
         l = kernel.KGauss(gwidth2q)
-        super(DC_GaussFSSD, self).__init__(datap, dataq, k, l, V, W, alpha)
+        super(DC_GaussFSSD, self).__init__(p, q, k, l, V, W, alpha)
+
+
+    @staticmethod
+    def optimize_power_criterion(p, q, datar, V0, gwidth0, reg=1e-3,
+            max_iter=100, tol_fun=1e-6, disp=False, locs_bounds_frac=100,
+            gwidth_lb=None, gwidth_ub=None):
+        """
+        Optimize one set of test locations and one Gaussian kernel width by
+        maximizing the test power criterion of the FSSD model comparison test
+        This optimization function is deterministic.
+
+        - p: a kgof.density.UnnormalizedDensity representing model 1.
+        - q: a kgof.density.UnnormalizedDensity representing model 2.
+        - datar: a kgof.data.Data from R (data generating distribution)
+        - V0: Jxd numpy array. Initial V containing J locations. For both
+              FSSD(P, R) and FSSD(Q, R)
+        - gwidth0: initial value of the Gaussian width^2        
+        - reg: reg to add to the mean/sqrt(variance) criterion to become
+            mean/sqrt(variance + reg)
+        - max_iter: gradient descent iterations
+        - tol_fun: termination tolerance of the objective value
+        - disp: True to print convergence messages
+        - locs_bounds_frac: When making box bounds for the test_locs, extend
+              the box defined by coordinate-wise min-max by std of each
+              coordinate (of the aggregated data) multiplied by this number.
+        - gwidth_lb: absolute lower bound on both the Gaussian width^2
+        - gwidth_ub: absolute upper bound on both the Gaussian width^2
+
+        If the lb, ub bounds are None, use fraction of the median heuristics 
+            to automatically set the bounds.
+        
+        Return (optimized V, optimized Gaussian width^2, info from the optimization)
+        """
+        J = V0.shape[0]
+        Z = datar.data()
+        n, d = Z.shape
+
+        # Parameterize the Gaussian width with its square root (then square later)
+        # to automatically enforce the positivity.
+        def obj(sqrt_gwidth, V):
+            gwidth2 = sqrt_gwidth**2
+            k = kernel.KGauss(gwidth2)
+            return -DC_FSSD.power_criterion(p, q, datar, k, k, V, V,
+                    reg=reg)
+
+        flatten = lambda gwidth, V: np.hstack((gwidth, V.reshape(-1)))
+        def unflatten(x):
+            sqrt_gwidth = x[0]
+            V = np.reshape(x[1:], (J, d))
+            return sqrt_gwidth, V
+
+        def flat_obj(x):
+            sqrt_gwidth, V = unflatten(x)
+            return obj(sqrt_gwidth, V)
+
+        # Initial point
+        x0 = flatten(np.sqrt(gwidth0), V0)
+        
+        #make sure that the optimized gwidth is not too small or too large.
+        med2 = util.meddistance(Z, subsample=1000)**2
+        fac_min = 1e-2 
+        fac_max = 1e2
+        if gwidth_lb is None:
+            gwidth_lb = max(fac_min*med2, 1e-3)
+        if gwidth_ub is None:
+            gwidth_ub = min(fac_max*med2, 1e5)
+
+        # Make a box to bound test locations
+        Z_std = np.std(Z, axis=0)
+        # Z_min: length-d array
+        Z_min = np.min(Z, axis=0)
+        Z_max = np.max(Z, axis=0)
+        # V_lb: J x d
+        V_lb = np.tile(Z_min - locs_bounds_frac*Z_std, (J, 1))
+        V_ub = np.tile(Z_max + locs_bounds_frac*Z_std, (J, 1))
+        # (J*d+1) x 2. Take square root because we parameterize with the square
+        # root
+        x0_lb = np.hstack((np.sqrt(gwidth_lb), np.reshape(V_lb, -1)))
+        x0_ub = np.hstack((np.sqrt(gwidth_ub), np.reshape(V_ub, -1)))
+        x0_bounds = list(zip(x0_lb, x0_ub))
+
+        # optimize. Time the optimization as well.
+        # https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html
+        grad_obj = autograd.elementwise_grad(flat_obj)
+        with util.ContextTimer() as timer:
+            opt_result = scipy.optimize.minimize(
+              flat_obj, x0, method='L-BFGS-B', 
+              bounds=x0_bounds,
+              tol=tol_fun, 
+              options={
+                  'maxiter': max_iter, 'ftol': tol_fun, 'disp': disp,
+                  'gtol': 1.0e-08,
+                  },
+              jac=grad_obj,
+            )
+
+        opt_result = dict(opt_result)
+        opt_result['time_secs'] = timer.secs
+        x_opt = opt_result['x']
+        sq_gw_opt, V_opt = unflatten(x_opt)
+        gw_opt = sq_gw_opt**2
+
+        assert util.is_real_num(gw_opt), 'gw_opt is not real. Was %s' % str(gw_opt)
+        return V_opt, gw_opt, opt_result
 
 # end of DC_GaussFSSD
 
@@ -366,8 +491,7 @@ class SC_UME(SCTest):
     @staticmethod
     def power_criterion(datap, dataq, datar, k, l, V, W, reg=1e-3): 
         """
-        Compute the mean and standard deviation of the three-sample test
-        statistic under H1. 
+        Compute the power criterion of the UME-based 3-sample test .
 
         :param datap: kgof.data.Data. data from P (model 1)
         :param dataq: kgof.data.Data. data from Q (model 2)
