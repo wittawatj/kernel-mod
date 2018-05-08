@@ -467,6 +467,23 @@ def get_n_pqrsources(prob_label):
                 ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
             ),
 
+        # p,q,r all standard normal in 10d. Mean shift problem. Unit variance.
+        'stdnorm_shift_d20': (
+            500,
+            [(mp, 
+                # p
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((mp, [0.0]*19)), 
+                1.0)),
+            # q = N([0.5, ..], 1). p is intially closer to r. Then moves further away.
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((0.5, [0.0]*19)), 
+                1.0)),
+            # data generating distribution r = N(0, 1)
+            data.DSIsotropicNormal(np.zeros(20), 1.0),
+                ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
+            ),
+
         } # end of prob2tuples
     if prob_label not in prob2tuples:
         raise ValueError('Unknown problem label. Need to be one of %s'%str(list(prob2tuples.keys()) ))
@@ -490,8 +507,12 @@ def run_problem(prob_label):
 
     # Use the following line if Slurm queue is not used.
     #engine = SerialComputationEngine()
-    engine = SlurmComputationEngine(batch_parameters, partition='wrkstn,compute')
-    #engine = SlurmComputationEngine(batch_parameters)
+    partitions = expr_configs['slurm_partitions']
+    if partitions is None:
+        engine = SlurmComputationEngine(batch_parameters)
+    else:
+        engine = SlurmComputationEngine(batch_parameters, partition=partitions)
+
     n_methods = len(method_funcs)
 
     # problem setting

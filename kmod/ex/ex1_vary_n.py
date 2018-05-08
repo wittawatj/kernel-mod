@@ -149,6 +149,9 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             #'test':scume, 
             'test_result': scume_opt2_result, 'time_secs': t.secs}
 
+def met_gumeJ1_3sopt_tr20(P, Q, data_source, n, r, J=1):
+    return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
+
 def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
     UME-based three-sample tespt
@@ -383,6 +386,7 @@ from kmod.ex.ex1_vary_n import met_gumeJ1_2V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_1V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr50
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
+from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gmmd_med
 
 #--- experimental setting -----
@@ -392,13 +396,14 @@ ex = 1
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 200
+reps = 100
 
 # tests to try
 method_funcs = [ 
     #met_gumeJ1_2V_rand, 
     #met_gumeJ1_1V_rand, 
-    met_gumeJ1_2sopt_tr50,
+    #met_gumeJ1_2sopt_tr50,
+    met_gumeJ1_3sopt_tr20,
     met_gumeJ1_3sopt_tr50,
     met_gmmd_med,
    ]
@@ -444,16 +449,20 @@ def get_ns_pqrsource(prob_label):
             data.DSIsotropicNormal(np.zeros(5), 1.0),
             ),
 
-        # H0 is true.
+        # H0 is true
         'stdnorm_h0_d50': (
             [400, 800, 1200, 1600],
 
             # p is closer. Should not reject.
-            model.ComposedModel(p=density.IsotropicNormal(np.array([0.5]*50), 1.0)),
-            # q 
-            model.ComposedModel(p=density.IsotropicNormal(np.array([1.0]*50), 1.0)),
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((0.5, np.zeros(49))),
+                1.0)),
+            # q is closer to r. Should reject.
+            model.ComposedModel(p=density.IsotropicNormal(
+                np.hstack((1, np.zeros(49))), 
+                1.0)),
             # data generating distribution r = N(0, 1)
-            data.DSIsotropicNormal(np.zeros(50), 1.0),
+            data.DSIsotropicNormal(np.array([0.0]*50), 1.0),
             ),
 
         # p,q,r all standard normal in 1d. Mean shift problem. Unit variance.
@@ -507,8 +516,11 @@ def run_problem(prob_label):
 
     # Use the following line if Slurm queue is not used.
     #engine = SerialComputationEngine()
-    engine = SlurmComputationEngine(batch_parameters, partition='wrkstn,compute')
-    #engine = SlurmComputationEngine(batch_parameters)
+    partitions = expr_configs['slurm_partitions']
+    if partitions is None:
+        engine = SlurmComputationEngine(batch_parameters)
+    else:
+        engine = SlurmComputationEngine(batch_parameters, partition=partitions)
     n_methods = len(method_funcs)
 
     # problem setting
