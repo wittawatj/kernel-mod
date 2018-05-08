@@ -264,26 +264,19 @@ def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
         #XYZ = np.vstack((X, Y, Z))
         #stds = np.std(util.subsample_rows(XYZ, min(n-3*J, 500),
         #    seed=r+87), axis=0)
-        d = X.shape[1]
-        # add a little noise to the locations. 
-        with util.NumpySeedContext(seed=r*191):
-            #pool3J = pool3J + np.random.randn(3*J, d)*np.max(stds)*3
-            pool3J = np.random.randn(3*J, d)*2
-
         # median heuristic to set the Gaussian widths
         medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
         medyz = util.meddistance(np.vstack((Z, Y)), subsample=1000)
         if use_1set_locs:
             # randomly select J points from the pool3J for the J test locations
-            #V = util.subsample_rows(pool3J, J, r)
-            V = pool3J[:J, :]
+            V = util.subsample_rows(pool3J, J, r)
             W = V
             k = kernel.KGauss(sigma2=np.mean([medxz, medyz])**2)
             l = k
         else:
             # use two sets of locations: V and W
-            #VW = util.subsample_rows(pool3J, 2*J, r)
-            VW = pool3J[:2*J, :]
+            VW = util.subsample_rows(pool3J, 2*J, r)
+            #VW = pool3J[:2*J, :]
             V = VW[:J, :]
             W = VW[J:, :]
 
@@ -301,6 +294,57 @@ def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
             #'test':scume, 
             'test_result': scume_rand_result, 'time_secs': t.secs}
 
+def met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
+    """
+    FSSD-based model comparison test
+        * Use J=1 test location by default (in the set V=W). 
+        * 3sopt = optimize the test locations by maximizing the 3-model test's
+        power criterion. There is only one set of test locations.
+        * One Gaussian kernel for the two FSSD statistics. Optimize the
+        Gaussian width
+    """
+    if not P.has_unnormalized_density() or not Q.has_unnormalized_density():
+        # Not applicable. Return {}.
+        return {}
+    assert J >= 1
+
+    p = P.get_unnormalized_density()
+    q = Q.get_unnormalized_density()
+    # sample some data 
+    datr = sample_pqr(None, None, data_source, n, r, only_from_r=True)
+
+    # Start the timer here
+    with util.ContextTimer() as t:
+        # split the data into training/test sets
+        datrtr, datrte = datr.split_tr_te(tr_proportion=tr_proportion, seed=r)         
+        Ztr = datrtr.data()
+
+        # median heuristic to set the Gaussian widths
+        medz = util.meddistance(Ztr, subsample=1000)
+        gwidth0 = medz**2
+        # pick a subset of points in the training set for V, W
+        V0 = util.subsample_rows(Ztr, J, seed=r+2)
+
+        # optimization options
+        opt_options = {
+            'max_iter': 100,
+            'reg': 1e-3,
+            'tol_fun': 1e-6,
+            'locs_bounds_frac': 100,
+            'gwidth_lb': None,
+            'gwidth_ub': None,
+        }
+
+        V_opt, gw_opt, opt_info = mct.DC_GaussFSSD.optimize_power_criterion(p, q, datrtr, V0, gwidth0, **opt_options)
+
+        dcfssd_opt = mct.DC_GaussFSSD(p, q, gw_opt, gw_opt, V_opt, V_opt, alpha=alpha)
+        dcfssd_opt_result = dcfssd_opt.perform_test(datrte)
+
+    return {
+            # This key "test" can be removed. Storing V, W can take quite a lot
+            # of space, especially when the input dimension d is high.
+            #'test':dcfssd_opt, 
+            'test_result': dcfssd_opt_result, 'time_secs': t.secs}
 
 def met_gmmd_med(P, Q, data_source, n, r):
     """
@@ -394,6 +438,7 @@ class Ex2Job(IndependentJob):
 # This import is needed so that pickle knows about the class Ex2Job.
 # pickle is used when collecting the results from the submitted jobs.
 from kmod.ex.ex2_prob_params import Ex2Job
+from kmod.ex.ex2_prob_params import met_gfssdJ1_3sopt_tr50
 from kmod.ex.ex2_prob_params import met_gumeJ1_2V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_1V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_2sopt_tr50
@@ -417,6 +462,7 @@ method_funcs = [
     #met_gumeJ1_2V_rand, 
     met_gumeJ1_1V_rand, 
     #met_gumeJ1_2sopt_tr50,
+    met_gfssdJ1_3sopt_tr50,
     met_gumeJ1_3sopt_tr20,
     met_gumeJ5_3sopt_tr20,
     met_gumeJ1_3sopt_tr50,
@@ -552,12 +598,12 @@ def run_problem(prob_label):
         foldername=foldername, job_name_base="e%d_"%ex, parameter_prefix="")
 
     # Use the following line if Slurm queue is not used.
-    #engine = SerialComputationEngine()
     partitions = expr_configs['slurm_partitions']
     if partitions is None:
-        engine = SlurmComputationEngine(batch_parameters)
+       engine = SlurmComputationEngine(batch_parameters)
     else:
-        engine = SlurmComputationEngine(batch_parameters, partition=partitions)
+       engine = SlurmComputationEngine(batch_parameters, partition=partitions)
+    #engine = SerialComputationEngine()
 
     n_methods = len(method_funcs)
 

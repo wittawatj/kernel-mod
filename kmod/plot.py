@@ -16,6 +16,8 @@ def get_func_tuples():
         (func_name used in the experiments, label name, plot line style)
     """
     func_tuples = [
+            ('met_gfssdJ1_3sopt_tr50', 'FSSD-opt3 J1', 'b-^'),
+
             ('met_gumeJ1_2V_rand', 'UME-rand J1', 'r--^'),
             ('met_gumeJ1_1V_rand', 'UME-rand J1 1V', 'y-'),
             ('met_gumeJ2_2V_rand', 'UME-rand J2', 'g--^'),

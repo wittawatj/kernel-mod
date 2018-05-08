@@ -191,9 +191,11 @@ class DC_FSSD(DCTest):
         assert Xiq.shape[1] == d
 
         statp, varp = gof.FSSD.ustat_h1_mean_variance(Xip, return_variance=True, use_unbiased=True)
-        assert varp > 0
+        if varp <= 0:
+            log.l().warning('varp is not positive. Was {}'.format(varp))
         statq, varq = gof.FSSD.ustat_h1_mean_variance(Xiq, return_variance=True, use_unbiased=True)
-        assert varq > 0
+        if varq <= 0:
+            log.l().warning('varq is not positive. Was {}'.format(varq))
         mean_h1 = statp - statq
 
         # compute the cross covariance (i.e., diagonal entries of the
