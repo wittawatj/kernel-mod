@@ -210,8 +210,35 @@ class DC_FSSD(DCTest):
             log.l().warning('variance of the stat is not positive. Was {}'.format(variance))
         return mean_h1, variance
 
-# end of MCFSSD
+# end of DC_FSSD
 
+class DC_GaussFSSD(DC_FSSD):
+    """
+    A test of for model comparison using the Finite-Set Stein Discrepancy
+    (FSSD) as the base discrepancy measure. A special case of DC_FSSD where 
+    a Gaussian kernel is used.
+    """
+    def __init__(self, datap, dataq, gwidth2p, gwidth2q, V, W, alpha=0.01):
+        """
+        :param p: a kmod.density.UnnormalizedDensity (model 1)
+        :param q: a kmod.density.UnnormalizedDensity (model 2)
+        :param gwidth0p: squared Gaussian width for the kernel k in FSSD(p, k, V)
+        :param gwidth0q: squared Gaussian width for the kernel l in FSSD(q, l, W)
+        :param V: Jp x d numpy array of Jp test locations used in FSSD(p, k, V)
+        :param W: Jq x d numpy array of Jq test locations used in FSSD(q, l, W)
+        :param alpha: significance level of the test
+        """
+
+        if not util.is_real_num(gwidth2p) or gwidth2p <= 0:
+            raise ValueError('gwidth2p must be positive real. Was {}'.format(gwidth2p))
+        if not util.is_real_num(gwidth2q) or gwidth2q <= 0:
+            raise ValueError('gwidth2q must be positive real. Was {}'.format(gwidth2q))
+
+        k = kernel.KGauss(gwidth2p)
+        l = kernel.KGauss(gwidth2q)
+        super(DC_GaussFSSD, self).__init__(datap, dataq, k, l, V, W, alpha)
+
+# end of DC_GaussFSSD
 
 class SC_UME(SCTest):
     """
@@ -383,7 +410,7 @@ class SC_GaussUME(SC_UME):
 
         k = kernel.KGauss(gwidth2p)
         l = kernel.KGauss(gwidth2q)
-        super(SC_UME, self).__init__(datap, dataq, k, l, V, W, alpha)
+        super(SC_GaussUME, self).__init__(datap, dataq, k, l, V, W, alpha)
 
     @staticmethod
     def optimize_3sample_criterion(datap, dataq, datar, V0, gwidth0, reg=1e-3,

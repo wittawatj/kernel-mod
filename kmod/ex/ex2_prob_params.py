@@ -158,6 +158,9 @@ def met_gumeJ5_3sopt_tr50(P, Q, data_source, n, r, tr_proportion=0.5):
 def met_gumeJ1_3sopt_tr20(P, Q, data_source, n, r, J=1):
     return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
 
+def met_gumeJ5_3sopt_tr20(P, Q, data_source, n, r):
+    return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=5, tr_proportion=0.2)
+
 def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
     UME-based three-sample tespt
@@ -396,6 +399,7 @@ from kmod.ex.ex2_prob_params import met_gumeJ1_1V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_2sopt_tr50
 from kmod.ex.ex2_prob_params import met_gumeJ1_3sopt_tr50
 from kmod.ex.ex2_prob_params import met_gumeJ1_3sopt_tr20
+from kmod.ex.ex2_prob_params import met_gumeJ5_3sopt_tr20
 from kmod.ex.ex2_prob_params import met_gumeJ5_3sopt_tr50
 from kmod.ex.ex2_prob_params import met_gmmd_med
 
@@ -414,6 +418,7 @@ method_funcs = [
     met_gumeJ1_1V_rand, 
     #met_gumeJ1_2sopt_tr50,
     met_gumeJ1_3sopt_tr20,
+    met_gumeJ5_3sopt_tr20,
     met_gumeJ1_3sopt_tr50,
     #met_gumeJ5_3sopt_tr50,
     met_gmmd_med,
@@ -423,6 +428,39 @@ method_funcs = [
 # setting already exists.
 is_rerun = False
 #---------------------------
+
+def pqr_gbrbm_perturb(to_perturb_Bp, to_perturb_Bq, dx=50, dh=10):
+    """
+    Get a Gaussian-Bernoulli RBM problem where the first entry of the B matrix
+    (the matrix linking the latent and the observation) is perturbed.
+
+    - to_perturb_Bp: constant to add to the entry of B in p to purturb it    
+    - to_perturb_Bq: constant to add to the entry of B in q to purturb it    
+    - dx: observed dimension
+    - dh: latent dimension
+
+    Return P (model.Model), Q (model.Model), data source (representing
+        distribution R)
+    """
+    with util.NumpySeedContext(seed=11):
+        B = np.random.randint(0, 2, (dx, dh))*2 - 1.0
+        b = np.random.randn(dx)
+        c = np.random.randn(dh)
+        r = density.GaussBernRBM(B, b, c)
+
+        # for p
+        Bp_perturb = np.copy(B)
+        Bp_perturb[0, 0] = Bp_perturb[0, 0] + to_perturb_Bp
+
+        # for q
+        Bq_perturb = np.copy(B)
+        Bq_perturb[0, 0] = Bq_perturb[0, 0] + to_perturb_Bq
+
+        p = density.GaussBernRBM(Bp_perturb, b, c)
+        q = density.GaussBernRBM(Bq_perturb, b, c)
+        ds = r.get_datasource(burnin=2000)
+
+    return (model.ComposedModel(p=p), model.ComposedModel(p=q), ds)
 
 def get_n_pqrsources(prob_label):
     """
@@ -482,6 +520,14 @@ def get_n_pqrsources(prob_label):
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.zeros(20), 1.0),
                 ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
+            ),
+
+
+        # A Gaussian-Bernoulli RBM problem.  
+        'gbrbm_dx20_dh5': (
+            600,
+            [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=20, dh=5) for
+                purturb_p in [0.1, 0.2, 0.4, 0.5]]
             ),
 
         } # end of prob2tuples
