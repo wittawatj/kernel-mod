@@ -9,6 +9,10 @@ from torch.autograd.gradcheck import zero_gradients
 from kmod import data, kernel, util
 from kmod.mctest import SC_UME
 
+import types
+import functools
+
+
 gpu_mode = True
 gpu_id = 2
 
@@ -250,3 +254,164 @@ def compute_jacobian(inputs, output):
             jacobian[i] = inputs.grad.data
 
     return torch.transpose(jacobian, dim0=0, dim1=1)
+
+
+def kernel_feat_decorator_with(model):
+    """Add an extra feature extracion with the given torch model"""
+
+    def kernel_feat_decorator(func):
+        @functools.wraps(func)
+        def new_func(*args, **kwargs):
+            n, d = args[0].shape
+            width = int((d/3)**0.5)
+            X = to_torch_variable(args[0].reshape((n, 3, width, width)))
+            n, d = args[1].shape
+            width = int((d/3)**0.5)
+            # print(n, d, width)
+            Y = to_torch_variable(args[1].reshape((n, 3, width, width)))
+            X_ = model(X).cpu().data.numpy()
+            X_ = X_.reshape((X_.shape[0], -1))
+            Y_ = model(Y).cpu().data.numpy()
+            Y_ = Y_.reshape((Y_.shape[0], -1))
+            return func(X_, Y_, *args[2:])
+        return new_func
+
+    return kernel_feat_decorator
+
+
+def decorate_all_methods_with(decorator):
+    """decorate a class with a given decorator"""
+
+    def decorate_all_methods(Cls):
+
+        class NewCls(object):
+
+            def __init__(self, *args, **kwargs):
+                self.decorated_instance = Cls(*args, **kwargs)
+
+            def __getattribute__(self, s):
+                """
+                Applying the decorator to all the methods in the class.
+                Methods not in object are accessed after applying the
+                decorator.
+                """
+                try:
+                    x = super(NewCls, self).__getattribute__(s)
+                except AttributeError:
+                    pass
+                else:
+                    return x
+                x = self.decorated_instance.__getattribute__(s)
+                if isinstance(x, types.MethodType):
+                    return decorator(x)
+                else:
+                    return x
+        return NewCls
+    return decorate_all_methods
+
+
+def extract_feats(X, model):
+    """
+    Extract features using model. 
+    Args:
+        - X: an nxd numpy array representing a set of RGB images
+        - model: a pytorch model
+    Returns:
+        - feat_X: an nxd' numpy array representing extracted features
+        of the dimenstionality d'
+    """
+    batch_size = 256
+    n = X.shape[0]
+    width = int((X.size / (3 * n))**0.5)
+    X = X.reshape((n, 3, width, width))
+    # print('X.shape: {}'.format(X.shape))
+    feat_X = []
+    for i in range(0, n, batch_size):
+        V = X[i: i+batch_size]
+        V_ = to_torch_variable(V)
+        fX = model(V_).cpu().data.numpy()
+        fX = fX.reshape((fX.shape[0], -1))
+        # print('fX.shape: {}'.format(fX.shape))
+        feat_X.append(fX)
+    feat_X = np.vstack(feat_X)
+    return feat_X
+
+
+def opt_greedy_3sample_criterion(datap, dataq, datar, model, locs,
+                                 gwidth, J, reg=1e-3, maximize=True,
+                                 extract_feature=True):
+    """
+    Obtain a set of J test locations by maximizing (or minimizing)
+    the power criterion of the UME three-sample test.
+    The test locations are given by choosing a subset from given 
+    locations by with the greedy forward selection. 
+
+    Args:
+        - datap: a kgof.data.Data from P (model 1)
+        - dataq: a kgof.data.Data from Q (model 2)
+        - datar: a kgof.data.Data from R (data generating distribution)
+        - model: a torch model used for feature extraction
+        - locs: an n_c x d numpy array representing a set of n_c candidate locations
+        - gwidth: the Gaussian width^2 for both UME(P, R) and UME(Q, R)
+        - reg: reg to add to the mean/sqrt(variance) criterion to become
+            mean/sqrt(variance + reg)
+        - maximize: if True, maximize the power criterion, otherwise minimize
+        - extract_feature: if True, the data is tranformed by the given feature
+          extractor model
+
+    Returns:
+        A set of indices representing obtinaed locations
+    """
+
+    # transform inputs to power criterion with feature extractor
+    if extract_feature:
+        dp = extract_feats(datap.data(), model)
+        dp = data.Data(dp)
+        dq = extract_feats(dataq.data(), model)
+        dq = data.Data(dq)
+        dr = extract_feats(datar.data(), model)
+        dr = data.Data(dr)
+        fV = extract_feats(locs, model)
+    else:
+        dp = datap
+        dq = dataq
+        dr = datar
+        fV = locs
+
+    def obj(V):
+        k = kernel.KGauss(gwidth)
+        if len(V.shape) < 2:
+            V = V.reshape((-1,) + V.shape)
+        if maximize:
+            return SC_UME.power_criterion(dp, dq, dr, k, k, V, V,
+                                          reg=reg)
+        else:
+            return -SC_UME.power_criterion(dp, dq, dr, k, k, V, V,
+                                           reg=reg)
+
+    def greedy_search(num_locs, loc_pool):
+        best_loc_idx = []
+        n = loc_pool.shape[0]
+        for _ in range(num_locs):
+            is_empty = (len(best_loc_idx) == 0)
+            if not is_empty:
+                best_locs = np.vstack(loc_pool[best_loc_idx])
+            max_val = None
+            for k in range(n):
+                if k not in best_loc_idx:
+                    if is_empty:
+                        V = loc_pool[k].reshape((1, -1))
+                    else:
+                        V = np.vstack([loc_pool[k], best_locs])
+                    score = obj(V)
+                    if max_val is None:
+                        max_val = score
+                        best_idx = k
+                    else:
+                        if score > max_val:
+                            max_val = score
+                            best_idx = k
+            best_loc_idx.append(best_idx)
+        return best_loc_idx
+
+    return greedy_search(J, fV)
