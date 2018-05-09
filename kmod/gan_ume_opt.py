@@ -4,6 +4,7 @@ import autograd.numpy as np
 import scipy
 from numpy.core.umath_tests import inner1d
 import torch
+import torch.nn as nn
 from torch.autograd import Variable
 from torch.autograd.gradcheck import zero_gradients
 from kmod import data, kernel, util
@@ -15,6 +16,8 @@ import functools
 
 gpu_mode = True
 gpu_id = 2
+image_size = 64
+model_input_size = 224
 
 
 def set_gpu_mode(is_gpu):
@@ -27,7 +30,12 @@ def set_gpu_id(gpu):
     gpu_id = gpu
 
 
-def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, Zp0,
+def set_model_input_size(size):
+    global model_input_size
+    model_input_size = size
+
+
+def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0,
                                Zq0, gwidth0, reg=1e-3, max_iter=100,
                                tol_fun=1e-6, disp=False, locs_bounds_frac=100,
                                gwidth_lb=None, gwidth_ub=None):
@@ -49,6 +57,7 @@ def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, Zp0,
            This is for model 1. 
         - Zq0: Jxd_n numpy array. Initial V containing J locations. For both
            This is for model 22. 
+        - model: a feature extractor applied to generated images 
         - gwidth0: initial value of the Gaussian width^2 for both UME(P, R),
               and UME(Q, R)
         - reg: reg to add to the mean/sqrt(variance) criterion to become
@@ -75,6 +84,8 @@ def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, Zp0,
     X, Y, Z = datap.data(), dataq.data(), datar.data()
     n, dp = X.shape
 
+    global image_size
+
     def flatten(gwidth, V):
         return np.hstack((gwidth, V.reshape(-1)))
 
@@ -85,21 +96,30 @@ def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, Zp0,
 
     # Parameterize the Gaussian width with its square root (then square later)
     # to automatically enforce the positivity.
-    def obj_pixel_space(sqrt_gwidth, V):
+    def obj_feat_space(sqrt_gwidth, V):
         k = kernel.KGauss(sqrt_gwidth**2)
         return -SC_UME.power_criterion(datap, dataq, datar, k, k, V, V,
                                        reg=reg)
 
-    def flat_obj_pix(x):
+    def flat_obj_feat(x):
         sqrt_gwidth, V = unflatten(x)
-        return obj_pixel_space(sqrt_gwidth, V)
+        return obj_feat_space(sqrt_gwidth, V)
 
     def obj_noise_space(sqrt_gwidth, z):
         zp = z[:J]
         zq = z[J:]
-        vp, vq = apply_to_models([zp, zq], [gen_p, gen_q])
-        V = np.vstack([vp, vq])
-        return obj_pixel_space(sqrt_gwidth, V)
+        torch_zp = to_torch_variable(zp, shape=(-1, zp.shape[1], 1, 1))
+        torch_zq = to_torch_variable(zq, shape=(-1, zq.shape[1], 1, 1))
+        # need preprocessing probably
+        global model_input_size
+        s = model_input_size
+        upsample = nn.Upsample(size=(s, s), mode='bilinear')
+        fp = model(upsample(gen_p(torch_zp))).cpu().data.numpy()
+        fp = fp.reshape((J, -1))
+        fq = model(upsample(gen_q(torch_zq))).cpu().data.numpy()
+        fq = fq.reshape((J, -1))
+        F = np.vstack([fp, fq])
+        return obj_feat_space(sqrt_gwidth, F)
 
     def flat_obj_noise(x):
         sqrt_gwidth, z = unflatten(x)
@@ -116,24 +136,54 @@ def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, Zp0,
             the gradient of the power criterion with respect to kernel width/latent vector
         """
 
-        width, z = unflatten(x)
-        zp = z[:J]
-        zq = z[J:]
-        V, [torch_zp, torch_zq] = apply_to_models([zp, zq], [gen_p, gen_q],
-                                                  return_variable=True, requires_grad=True)
-        V = np.vstack(V)
-        grad_obj = autograd.elementwise_grad(flat_obj_pix)  # 1+(2J)*image_size input
-        grad_obj_v = grad_obj(flatten(width, V))
-        grad_obj_width = grad_obj_v[0]
-        grad_obj_v = np.reshape(grad_obj_v[1:], [(2*J), -1])  # 2J x d_pix array
+        with util.ContextTimer() as t:
+            width, z = unflatten(x)
+            zp = z[:J]
+            zq = z[J:]
 
-        gp_grad = compute_jacobian(torch_zp, gen_p(torch_zp).view(J, -1))  # J x d_pix x d_noise x 1 x 1
-        gq_grad = compute_jacobian(torch_zq, gen_q(torch_zq).view(J, -1))  # J x d_pix x d_noise x 1 x 1
-        v_grad = np.vstack([gp_grad.cpu().numpy(), gq_grad.cpu().numpy()])
-        v_grad = np.squeeze(v_grad, [3, 4])
-        grad_obj_z = inner1d(grad_obj_v, np.transpose(v_grad, (2, 0, 1))).flatten()
+            # Compute the Jacobian of the generators with respect to noise vector
+            torch_zp = to_torch_variable(zp, shape=(-1, zp.shape[1], 1, 1),
+                                         requires_grad=True)
+            torch_zq = to_torch_variable(zq, shape=(-1, zq.shape[1], 1, 1),
+                                         requires_grad=True)
+            gp_grad = compute_jacobian(torch_zp, gen_p(torch_zp).view(J, -1))  # J x d_pix x d_noise x 1 x 1
+            gq_grad = compute_jacobian(torch_zq, gen_q(torch_zq).view(J, -1))  # J x d_pix x d_noise x 1 x 1
+            v_grad_z = np.vstack([gp_grad, gq_grad])
+            v_grad_z = np.squeeze(v_grad_z, [3, 4])  # 2J x d_pix x d_noise
+            
+            # Compute the Jacobian of the feature extractor with respect to noise vector
+            vp_flatten = to_torch_variable(
+                gen_p(torch_zp).view(J, -1).cpu().data.numpy(),
+                shape=(J, 3, image_size, image_size),
+                requires_grad=True
+            )
+            vq_flatten = to_torch_variable(
+                gen_q(torch_zq).view(J, -1).cpu().data.numpy(),
+                shape=(J, 3, image_size, image_size),
+                requires_grad=True
+            )
+            upsample = nn.Upsample(size=(224, 224), mode='bilinear')
+            fp = model(upsample(vp_flatten))
+            fq = model(upsample(vq_flatten))
+            fp_grad = compute_jacobian(vp_flatten, fp.view(J, -1))  # J x d_nn x C x H x W
+            fq_grad = compute_jacobian(vq_flatten, fq.view(J, -1))  # J x d_nn x C x H x W
+            f_grad_v = np.vstack([fp_grad, fq_grad])
+            f_grad_v = f_grad_v.reshape((2*J, f_grad_v.shape[1], -1))  # 2J x d_nn x d_pix
 
-        return np.concatenate([grad_obj_width.reshape([1]), grad_obj_z])
+            # Compute the gradient of the objective function with respect to
+            # the gaussian width and test locations
+            F = np.vstack([fp.cpu().data.numpy(), fq.cpu().data.numpy()])
+            F = np.reshape(F, (2*J, -1))
+            grad_obj = autograd.elementwise_grad(flat_obj_feat)  # 1+(2J)*d_nn input
+            obj_grad_f = grad_obj(flatten(width, F))
+            obj_grad_width = obj_grad_f[0]
+            obj_grad_f = np.reshape(obj_grad_f[1:], [(2*J), -1])  # 2J x d_nn array
+
+            obj_grad_v = inner1d(obj_grad_f, np.transpose(f_grad_v, (2, 0, 1)))  # 2J x d_pix
+            obj_grad_z = inner1d(obj_grad_v.T, np.transpose(v_grad_z, (2, 0, 1))).flatten()
+
+        # print(t.secs)
+        return np.concatenate([obj_grad_width.reshape([1]), obj_grad_z])
 
     # Initial point
     x0 = flatten(np.sqrt(gwidth0), Z0)
@@ -219,7 +269,7 @@ def apply_to_models(inputs, models, return_variable=False, requires_grad=False):
         v = to_torch_variable(x, shape=(-1, x.shape[1], 1, 1), requires_grad=requires_grad)
         sample = model(v).cpu().data.numpy()
         sample = np.reshape(sample, [sample.shape[0], -1])
-        sample = np.clip(sample, 0, 1)
+        # sample = np.clip(sample, 0, 1)
         samples.append(sample)
         variables.append(v)
     if return_variable:
@@ -231,29 +281,30 @@ def apply_to_models(inputs, models, return_variable=False, requires_grad=False):
 # modify this later
 def compute_jacobian(inputs, output):
     """
-    :param inputs: Batch X Size (e.g. Depth X Width X Height)
+    :param inputs: Batch X Size (Torch)
     :param output: Batch X Classes
-    :return: jacobian: Batch X Classes X Size
+    :return: jacobian: Batch X Classes X Size, numpy array
     """
     assert inputs.requires_grad
 
     num_classes = output.size()[1]
 
-    jacobian = torch.zeros(num_classes, *inputs.size())
+    jacobian = np.zeros((num_classes,) + tuple(inputs.size()))
     grad_output = torch.zeros(*output.size())
     if inputs.is_cuda:
             global gpu_id
             grad_output = grad_output.cuda(gpu_id)
-            jacobian = jacobian.cuda(gpu_id)
 
     for i in range(num_classes):
             zero_gradients(inputs)
             grad_output.zero_()
             grad_output[:, i] = 1
-            output.backward(grad_output, retain_variables=True)
-            jacobian[i] = inputs.grad.data
+            output.backward(grad_output, retain_graph=True)
+            jacobian[i] = inputs.grad.cpu().data.numpy()
 
-    return torch.transpose(jacobian, dim0=0, dim1=1)
+    # return torch.transpose(jacobian, dim0=0, dim1=1)
+    s = tuple(range(len(jacobian.shape)))
+    return np.transpose(jacobian, (1, 0,) + s[2:])
 
 
 def kernel_feat_decorator_with(model):
@@ -310,7 +361,7 @@ def decorate_all_methods_with(decorator):
     return decorate_all_methods
 
 
-def extract_feats(X, model):
+def extract_feats(X, model, upsample=False):
     """
     Extract features using model. 
     Args:
@@ -326,9 +377,15 @@ def extract_feats(X, model):
     X = X.reshape((n, 3, width, width))
     # print('X.shape: {}'.format(X.shape))
     feat_X = []
+
     for i in range(0, n, batch_size):
         V = X[i: i+batch_size]
         V_ = to_torch_variable(V)
+        if upsample:
+            global model_input_size
+            m = nn.Upsample((model_input_size, model_input_size),
+                            mode='bilinear')
+            V_ = m(V_)
         fX = model(V_).cpu().data.numpy()
         fX = fX.reshape((fX.shape[0], -1))
         # print('fX.shape: {}'.format(fX.shape))
@@ -341,10 +398,10 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, model, locs,
                                  gwidth, J, reg=1e-3, maximize=True,
                                  extract_feature=True):
     """
-    Obtain a set of J test locations by maximizing (or minimizing)
+    Obtains a set of J test locations by maximizing (or minimizing)
     the power criterion of the UME three-sample test.
-    The test locations are given by choosing a subset from given 
-    locations by with the greedy forward selection. 
+    The test locations are given by choosing a subset from given
+    candidate locations by the greedy forward selection.
 
     Args:
         - datap: a kgof.data.Data from P (model 1)
