@@ -568,12 +568,25 @@ def get_n_pqrsources(prob_label):
                 ) for mp in [0.4, 0.45, 0.55, 0.6, 0.7 ] ]
             ),
 
+        # A Gaussian-Bernoulli RBM problem.  
+        'gbrbm_dx30_dh10': (
+            800,
+            [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=30, dh=10) for
+                purturb_p in [0.1, 0.2, 0.4, 0.5]]
+            ),
 
         # A Gaussian-Bernoulli RBM problem.  
         'gbrbm_dx20_dh5': (
             600,
             [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=20, dh=5) for
                 purturb_p in [0.1, 0.2, 0.4, 0.5]]
+            ),
+
+        # A Gaussian-Bernoulli RBM problem.  
+        'gbrbm_dx10_dh5': (
+            600,
+            [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=10, dh=5) for
+                purturb_p in [0.1, 0.2, 0.25, 0.4, 0.35, 0.5, 0.6]]
             ),
 
         } # end of prob2tuples
