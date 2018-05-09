@@ -518,6 +518,35 @@ class SC_UME(SCTest):
         ratio = mean_h1/np.sqrt(var_h1 + reg)
         return ratio
 
+    @staticmethod
+    def ume_test(X, Y, Z, V, alpha=0.01):
+        """
+        Perform a UME three-sample test.
+        All the data are assumed to be preprocessed.
+
+        Args:
+            - X: n x d ndarray, a sample from P
+            - Y: n x d ndarray, a sample from Q
+            - Z: n x d ndarray, a sample from R
+            - V: J x d ndarray, a set of J test locations
+            - alpha: a user specified significance level
+
+        Returns:
+            - a dictionary of the form
+                {
+                    alpha: 0.01,
+                    pvalue: 0.0002,
+                    test_stat: 2.3,
+                    h0_rejected: True,
+                    time_secs: ...
+                }
+        """
+        XYZ = np.vstack((X, Y, Z))
+        med2 = util.meddistance(XYZ, subsample=1000)**2
+        k = kernel.KGauss(med2)
+        scume = SC_UME(data.Data(X), data.Data(Y), k, k, V, V, alpha)
+        return scume.perform_test(data.Data(Z))
+
 # end of class SC_UME
 
 class SC_GaussUME(SC_UME):
