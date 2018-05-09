@@ -755,9 +755,14 @@ class SC_MMD(SCTest):
             # mean and variance are not yet scaled by \sqrt{n}
             # The variance is the same for both H0 and H1.
             mean_h1, var = self.get_H1_mean_variance(dat)
+            if not util.is_real_num(var) or var < 0:
+                log.l().warning('Invalid H0 variance. Was {}'.format(var))
             stat = (n**0.5) * mean_h1
             # Assume the mean of the null distribution is 0
             pval = stats.norm.sf(stat, loc=0, scale=var**0.5)
+            if not util.is_real_num(pval):
+                log.l().warning('p-value is not a real number. Was {}'.format(pval))
+
 
         results = {
             'alpha': self.alpha, 'pvalue': pval, 'test_stat': stat,

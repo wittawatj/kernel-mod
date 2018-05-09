@@ -27,6 +27,7 @@ from independent_jobs.engines.SlurmComputationEngine import SlurmComputationEngi
 from independent_jobs.tools.Log import logger
 #import numpy as np
 import autograd.numpy as np
+import math
 import os
 import sys 
 
@@ -466,6 +467,32 @@ method_funcs = [
 is_rerun = False
 #---------------------------
 
+def make_gmm_blobs_d2(distance_factor=5.0, ):
+    def rot2d_matrix(angle):
+        r = np.array( [[math.cos(angle), -math.sin(angle)], [math.sin(angle), math.cos(angle)]] )
+        return r
+
+    def rot2d_cov(angle, cov):
+        R = rot2d_matrix(angle)
+        return np.dot(np.dot(R, cov), R.T)
+
+    means = np.array([[-1.0, 1], [1, 1], [-1, -1], [1, -1]])*distance_factor
+    base_cov = np.array([[4.0, 0], [0, 0.5]])
+
+    # 4 isotropic covariance matrices in 2d
+    covr = np.tile(base_cov, [4, 1, 1])
+    covq = np.tile(rot2d_cov(np.pi/5.0, base_cov), [4, 1, 1])
+    covp = np.tile(rot2d_cov(np.pi/2.0, base_cov), [4, 1, 1])
+
+    p = density.GaussianMixture(means, covp)
+    q = density.GaussianMixture(means, covq)
+    r = density.GaussianMixture(means, covr)
+
+    modelp = model.ComposedModel(p=p)
+    modelq = model.ComposedModel(p=q)
+    ds = r.get_datasource()
+    return modelp, modelq, ds
+
 def get_ns_pqrsource(prob_label):
     """
     Return (ns, P, Q, ds), a tuple of
@@ -545,6 +572,10 @@ def get_ns_pqrsource(prob_label):
             # data generating distribution r = N(0, 1)
             data.DSIsotropicNormal(np.array([0.0]*20), 1.0),
             ),
+
+        'gmm_blobs_d2': 
+            # list of sample sizes
+            ([300, 600, 900, 1200], ) + make_gmm_blobs_d2(),
 
         } # end of prob2tuples
     if prob_label not in prob2tuples:
