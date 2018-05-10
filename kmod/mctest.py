@@ -519,7 +519,7 @@ class SC_UME(SCTest):
         return ratio
 
     @staticmethod
-    def ume_test(X, Y, Z, V, alpha=0.01):
+    def ume_test(X, Y, Z, V, alpha=0.01, mode='mean'):
         """
         Perform a UME three-sample test.
         All the data are assumed to be preprocessed.
@@ -541,9 +541,16 @@ class SC_UME(SCTest):
                     time_secs: ...
                 }
         """
-        XYZ = np.vstack((X, Y, Z))
-        med2 = util.meddistance(XYZ, subsample=1000)**2
-        k = kernel.KGauss(med2)
+        if mode == 'mean':
+            medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
+            medyz = util.meddistance(np.vstack((Y, Z)), subsample=1000)
+            mean_medxyz = np.mean([medxz, medyz])
+            gwidth = mean_medxyz**2
+        else:
+            XYZ = np.vstack((X, Y, Z))
+            med2 = util.meddistance(XYZ, subsample=1000)**2
+            gwidth = med2
+        k = kernel.KGauss(gwidth)
         scume = SC_UME(data.Data(X), data.Data(Y), k, k, V, V, alpha)
         return scume.perform_test(data.Data(Z))
 
@@ -902,5 +909,41 @@ class SC_MMD(SCTest):
         # theCov = (4*(m-2))/(m*(m-1)) * zeta_1;
 
         return cov    
+
+    @staticmethod
+    def mmd_test(X, Y, Z, alpha=0.01, mode='mean'):
+        """
+        Perform a MMD three-sample test.
+        All the data are assumed to be preprocessed.
+
+        Args:
+            - X: n x d ndarray, a sample from P
+            - Y: n x d ndarray, a sample from Q
+            - Z: n x d ndarray, a sample from R
+            - alpha: a user specified significance level
+
+        Returns:
+            - a dictionary of the form
+                {
+                    alpha: 0.01,
+                    pvalue: 0.0002,
+                    test_stat: 2.3,
+                    h0_rejected: True,
+                    time_secs: ...
+                }
+        """
+        if mode == 'mean':
+            medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
+            medyz = util.meddistance(np.vstack((Y, Z)), subsample=1000)
+            mean_medxyz = np.mean([medxz, medyz])
+            gwidth = mean_medxyz**2
+        else:
+            XYZ = np.vstack((X, Y, Z))
+            med2 = util.meddistance(XYZ, subsample=1000)**2
+            gwidth = med2
+        k = kernel.KGauss(gwidth)
+        scmmd = SC_MMD(data.Data(X), data.Data(Y), k, alpha)
+        return scmmd.perform_test(data.Data(Z))
+
 
 # end of class SC_MMD
