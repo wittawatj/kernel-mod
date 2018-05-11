@@ -124,11 +124,11 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
         # optimization options
         opt_options = {
             'max_iter': 100,
-            'reg': 1e-3,
+            'reg': 1e-4,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
-            'gwidth_lb': None,
-            'gwidth_ub': None,
+            'gwidth_lb': 0.1**2,
+            'gwidth_ub': 10**2,
         }
 
         umep_params, umeq_params = mct.SC_GaussUME.optimize_2sets_locs_widths(
@@ -193,10 +193,10 @@ def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
         opt_options = {
             'max_iter': 100,
             'reg': 1e-3,
-            'tol_fun': 1e-6,
-            'locs_bounds_frac': 100,
-            'gwidth_lb': None,
-            'gwidth_ub': None,
+            'tol_fun': 1e-7,
+            'locs_bounds_frac': 50,
+            'gwidth_lb': 0.1,
+            'gwidth_ub': 6**2,
         }
         V_opt, gw2_opt, opt_result = mct.SC_GaussUME.optimize_3sample_criterion(
             datptr, datqtr, datrtr, V0, gwidth0, **opt_options)    
@@ -339,8 +339,8 @@ def met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             'reg': 1e-3,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
-            'gwidth_lb': None,
-            'gwidth_ub': None,
+            'gwidth_lb': 0.1**2,
+            'gwidth_ub': 10**2,
         }
 
         V_opt, gw_opt, opt_info = mct.DC_GaussFSSD.optimize_power_criterion(p, q, datrtr, V0, gwidth0, **opt_options)
@@ -468,6 +468,7 @@ method_funcs = [
     #met_gumeJ1_2V_rand, 
     #met_gumeJ1_1V_rand, 
     #met_gumeJ1_2sopt_tr50,
+    # met_gfssdJ1_3sopt_tr20,
     met_gfssdJ1_3sopt_tr20,
     met_gfssdJ5_3sopt_tr20,
     met_gumeJ1_3sopt_tr20,
@@ -491,7 +492,7 @@ def make_gmm_blobs_d2(distance_factor=5.0, ):
         return np.dot(np.dot(R, cov), R.T)
 
     means = np.array([[-1.0, 1], [1, 1], [-1, -1], [1, -1]])*distance_factor
-    base_cov = np.array([[4.0, 0], [0, 0.5]])
+    base_cov = np.array([[5.0, 0], [0, 0.5]])
 
     # 4 isotropic covariance matrices in 2d
     covr = np.tile(base_cov, [4, 1, 1])
@@ -589,7 +590,7 @@ def get_ns_pqrsource(prob_label):
 
         'gmm_blobs_d2': 
             # list of sample sizes
-            ([300, 600, 900, 1200, 1500, 1800, 2100, 2400], ) + make_gmm_blobs_d2(),
+            ([300, 900, 1500, 2100, 2700], ) + make_gmm_blobs_d2(),
 
         'gmm_blobs_d2_dfac4': 
             # list of sample sizes

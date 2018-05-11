@@ -128,8 +128,8 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             'reg': 1e-3,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
-            'gwidth_lb': None,
-            'gwidth_ub': None,
+            'gwidth_lb': 0.1**2,
+            'gwidth_ub': 10**2,
         }
 
         umep_params, umeq_params = mct.SC_GaussUME.optimize_2sets_locs_widths(
@@ -200,8 +200,8 @@ def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             'reg': 1e-3,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
-            'gwidth_lb': None,
-            'gwidth_ub': None,
+            'gwidth_lb': 0.1**2,
+            'gwidth_ub': 10**2,
         }
         V_opt, gw2_opt, opt_result = mct.SC_GaussUME.optimize_3sample_criterion(
             datptr, datqtr, datrtr, V0, gwidth0, **opt_options)    
@@ -337,8 +337,8 @@ def met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
             'reg': 1e-3,
             'tol_fun': 1e-6,
             'locs_bounds_frac': 100,
-            'gwidth_lb': None,
-            'gwidth_ub': None,
+            'gwidth_lb': 0.1**2,
+            'gwidth_ub': 10**2,
         }
 
         V_opt, gw_opt, opt_info = mct.DC_GaussFSSD.optimize_power_criterion(p, q, datrtr, V0, gwidth0, **opt_options)
@@ -385,7 +385,7 @@ def met_gmmd_med(P, Q, data_source, n, r):
 
     return {
             # This key "test" can be removed.             
-            'test': scmmd, 
+            # 'test': scmmd, 
             'test_result': scmmd_result, 'time_secs': t.secs}
 
 # Define our custom Job, which inherits from base class IndependentJob
@@ -470,8 +470,9 @@ method_funcs = [
     #met_gumeJ1_2V_rand, 
     #met_gumeJ1_1V_rand, 
     #met_gumeJ1_2sopt_tr50,
-    #met_gfssdJ1_3sopt_tr50,
+    # met_gfssdJ1_3sopt_tr50,
     met_gfssdJ5_3sopt_tr20,
+    met_gfssdJ1_3sopt_tr20,
     met_gumeJ1_3sopt_tr20,
     met_gumeJ5_3sopt_tr20,
     #met_gumeJ1_3sopt_tr50,
@@ -588,7 +589,7 @@ def get_n_pqrsources(prob_label):
         'gbrbm_dx20_dh5': (
             2000,
             [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=20, dh=5) for
-                purturb_p in [0.2, 0.25, 0.35, 0.4, 0.5, 0.6]]
+                purturb_p in [0.2, 0.25, 0.35, 0.4, 0.5, 0.6, 0.7]]
             ),
 
         # A Gaussian-Bernoulli RBM problem.  
@@ -684,8 +685,10 @@ def run_problem(prob_label):
 
     # save results 
     results = {'job_results': job_results, 'prob_params': params,
-            'ps': Ps, 'qs': Qs, 
-            'list_data_source': dss, 'sample_size': n,
+            'ps': Ps, 
+            'qs': Qs, 
+            'list_data_source': dss, 
+            'sample_size': n,
             'alpha': alpha, 'repeats': reps, 
             'method_funcs': method_funcs, 'prob_label': prob_label,
             }
