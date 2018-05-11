@@ -18,6 +18,7 @@ gpu_mode = True
 gpu_id = 2
 image_size = 64
 model_input_size = 224
+batch_size = 128
 
 
 def set_gpu_mode(is_gpu):
@@ -33,6 +34,11 @@ def set_gpu_id(gpu):
 def set_model_input_size(size):
     global model_input_size
     model_input_size = size
+
+
+def set_batch_size(size):
+    global batch_size
+    batch_size = size
 
 
 def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0,
@@ -162,7 +168,8 @@ def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0,
                 shape=(J, 3, image_size, image_size),
                 requires_grad=True
             )
-            upsample = nn.Upsample(size=(224, 224), mode='bilinear')
+            size = (model_input_size, model_input_size)
+            upsample = nn.Upsample(size=size, mode='bilinear')
             fp = model(upsample(vp_flatten))
             fq = model(upsample(vq_flatten))
             fp_grad = compute_jacobian(vp_flatten, fp.view(J, -1))  # J x d_nn x C x H x W
@@ -182,8 +189,7 @@ def optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0,
             obj_grad_v = inner1d(obj_grad_f, np.transpose(f_grad_v, (2, 0, 1)))  # 2J x d_pix
             obj_grad_z = inner1d(obj_grad_v.T, np.transpose(v_grad_z, (2, 0, 1))).flatten()
 
-        # print(t.secs)
-        return np.concatenate([obj_grad_width.reshape([1]), obj_grad_z])
+        return np.concatenate([obj_grad_width.reshape([1]), obj_grad_z]) 
 
     # Initial point
     x0 = flatten(np.sqrt(gwidth0), Z0)
@@ -292,15 +298,15 @@ def compute_jacobian(inputs, output):
     jacobian = np.zeros((num_classes,) + tuple(inputs.size()))
     grad_output = torch.zeros(*output.size())
     if inputs.is_cuda:
-            global gpu_id
-            grad_output = grad_output.cuda(gpu_id)
+        global gpu_id
+        grad_output = grad_output.cuda(gpu_id)
 
     for i in range(num_classes):
-            zero_gradients(inputs)
-            grad_output.zero_()
-            grad_output[:, i] = 1
-            output.backward(grad_output, retain_graph=True)
-            jacobian[i] = inputs.grad.cpu().data.numpy()
+        zero_gradients(inputs)
+        grad_output.zero_()
+        grad_output[:, i] = 1
+        output.backward(grad_output, retain_graph=True)
+        jacobian[i] = inputs.grad.cpu().data.numpy()
 
     # return torch.transpose(jacobian, dim0=0, dim1=1)
     s = tuple(range(len(jacobian.shape)))
@@ -371,7 +377,7 @@ def extract_feats(X, model, upsample=False):
         - feat_X: an nxd' numpy array representing extracted features
         of the dimenstionality d'
     """
-    batch_size = 256
+    global batch_size
     n = X.shape[0]
     width = int((X.size / (3 * n))**0.5)
     X = X.reshape((n, 3, width, width))
