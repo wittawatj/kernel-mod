@@ -294,6 +294,12 @@ def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
             #'test':scume, 
             'test_result': scume_rand_result, 'time_secs': t.secs}
 
+def met_gfssdJ1_3sopt_tr20(P, Q, data_source, n, r, J=1):
+    return met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
+
+def met_gfssdJ5_3sopt_tr20(P, Q, data_source, n, r):
+    return met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=5, tr_proportion=0.2)
+
 def met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
     FSSD-based model comparison test
@@ -439,6 +445,8 @@ class Ex2Job(IndependentJob):
 # pickle is used when collecting the results from the submitted jobs.
 from kmod.ex.ex2_prob_params import Ex2Job
 from kmod.ex.ex2_prob_params import met_gfssdJ1_3sopt_tr50
+from kmod.ex.ex2_prob_params import met_gfssdJ1_3sopt_tr20
+from kmod.ex.ex2_prob_params import met_gfssdJ5_3sopt_tr20
 from kmod.ex.ex2_prob_params import met_gumeJ1_2V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_1V_rand
 from kmod.ex.ex2_prob_params import met_gumeJ1_2sopt_tr50
@@ -455,17 +463,18 @@ ex = 2
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 50
+reps = 200
 
 # tests to try
 method_funcs = [ 
     #met_gumeJ1_2V_rand, 
-    met_gumeJ1_1V_rand, 
+    #met_gumeJ1_1V_rand, 
     #met_gumeJ1_2sopt_tr50,
-    met_gfssdJ1_3sopt_tr50,
+    #met_gfssdJ1_3sopt_tr50,
+    met_gfssdJ5_3sopt_tr20,
     met_gumeJ1_3sopt_tr20,
     met_gumeJ5_3sopt_tr20,
-    met_gumeJ1_3sopt_tr50,
+    #met_gumeJ1_3sopt_tr50,
     #met_gumeJ5_3sopt_tr50,
     met_gmmd_med,
    ]
@@ -577,16 +586,16 @@ def get_n_pqrsources(prob_label):
 
         # A Gaussian-Bernoulli RBM problem.  
         'gbrbm_dx20_dh5': (
-            600,
+            2000,
             [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=20, dh=5) for
-                purturb_p in [0.1, 0.2, 0.4, 0.5]]
+                purturb_p in [0.2, 0.25, 0.35, 0.4, 0.5, 0.6]]
             ),
 
         # A Gaussian-Bernoulli RBM problem.  
         'gbrbm_dx10_dh5': (
             600,
             [(purturb_p,) + pqr_gbrbm_perturb(purturb_p, 0.3, dx=10, dh=5) for
-                purturb_p in [0.1, 0.2, 0.25, 0.4, 0.35, 0.5, 0.6]]
+                purturb_p in [0.1, 0.2, 0.25, 0.35, 0.4, 0.5, 0.6]]
             ),
 
         } # end of prob2tuples

@@ -433,7 +433,7 @@ class SC_UME(SCTest):
             mean_h1, var = self.get_H1_mean_variance(dat)
             stat = (n**0.5)*mean_h1
             null_std = var**0.5
-            if null_std <= 1e-5:
+            if null_std <= 1e-6:
                 log.l().warning('SD of the null distribution is too small. Was {}. Will not reject H0.'.format(null_std))
                 pval = np.inf
             else:

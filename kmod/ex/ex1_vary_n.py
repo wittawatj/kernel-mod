@@ -153,6 +153,9 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
 def met_gumeJ1_3sopt_tr20(P, Q, data_source, n, r, J=1):
     return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
 
+def met_gumeJ5_3sopt_tr20(P, Q, data_source, n, r):
+    return met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=5, tr_proportion=0.2)
+
 def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
     UME-based three-sample tespt
@@ -292,6 +295,12 @@ def met_gumeJ1_2V_rand(P, Q, data_source, n, r, J=1, use_1set_locs=False):
             # of space, especially when the input dimension d is high.
             #'test':scume, 
             'test_result': scume_rand_result, 'time_secs': t.secs}
+
+def met_gfssdJ1_3sopt_tr20(P, Q, data_source, n, r, J=1):
+    return met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
+
+def met_gfssdJ5_3sopt_tr20(P, Q, data_source, n, r):
+    return met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=5, tr_proportion=0.2)
 
 def met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
@@ -435,11 +444,14 @@ class Ex1Job(IndependentJob):
 # pickle is used when collecting the results from the submitted jobs.
 from kmod.ex.ex1_vary_n import Ex1Job
 from kmod.ex.ex1_vary_n import met_gfssdJ1_3sopt_tr50
+from kmod.ex.ex1_vary_n import met_gfssdJ1_3sopt_tr20
+from kmod.ex.ex1_vary_n import met_gfssdJ5_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gumeJ1_2V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_1V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr50
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr20
+from kmod.ex.ex1_vary_n import met_gumeJ5_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gmmd_med
 
 #--- experimental setting -----
@@ -449,16 +461,18 @@ ex = 1
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 100
+reps = 200
 
 # tests to try
 method_funcs = [ 
     #met_gumeJ1_2V_rand, 
     #met_gumeJ1_1V_rand, 
-    met_gfssdJ1_3sopt_tr50,
     #met_gumeJ1_2sopt_tr50,
+    met_gfssdJ1_3sopt_tr20,
+    met_gfssdJ5_3sopt_tr20,
     met_gumeJ1_3sopt_tr20,
-    met_gumeJ1_3sopt_tr50,
+    met_gumeJ5_3sopt_tr20,
+    #met_gumeJ1_3sopt_tr50,
     met_gmmd_med,
    ]
 
@@ -575,7 +589,11 @@ def get_ns_pqrsource(prob_label):
 
         'gmm_blobs_d2': 
             # list of sample sizes
-            ([300, 600, 900, 1200], ) + make_gmm_blobs_d2(),
+            ([300, 600, 900, 1200, 1500, 1800, 2100, 2400], ) + make_gmm_blobs_d2(),
+
+        'gmm_blobs_d2_dfac4': 
+            # list of sample sizes
+            ([300, 600, 900, 1200, 1500], ) + make_gmm_blobs_d2(distance_factor=4.0),
 
         } # end of prob2tuples
     if prob_label not in prob2tuples:
