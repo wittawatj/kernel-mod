@@ -188,8 +188,12 @@ def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
         Xyztr = np.vstack((Xtr, Ytr, Ztr))
         # initialize optimization parameters.
         # Initialize the Gaussian widths with the median heuristic
-        medxyz = util.meddistance(Xyztr, subsample=1000)
-        gwidth0 = medxyz**2
+        #medxyz = util.meddistance(Xyztr, subsample=1000)
+        #gwidth0 = medxyz**2
+
+        medxz = util.meddistance(np.vstack((Xtr, Ztr)), subsample=1000)
+        medyz = util.meddistance(np.vstack((Ztr, Ytr)), subsample=1000)
+        gwidth0 = np.mean([medxz, medyz])**2
 
         # pick a subset of points in the training set for V, W
         V0 = util.subsample_rows(Xyztr, J, seed=r+2)
@@ -463,7 +467,7 @@ ex = 2
 alpha = 0.05
 
 # repetitions for each sample size 
-reps = 200
+reps = 300
 
 # tests to try
 method_funcs = [ 
@@ -471,12 +475,13 @@ method_funcs = [
     #met_gumeJ1_1V_rand, 
     #met_gumeJ1_2sopt_tr50,
     # met_gfssdJ1_3sopt_tr50,
-    met_gfssdJ5_3sopt_tr20,
-    met_gfssdJ1_3sopt_tr20,
-    met_gumeJ1_3sopt_tr20,
-    met_gumeJ5_3sopt_tr20,
     #met_gumeJ1_3sopt_tr50,
     #met_gumeJ5_3sopt_tr50,
+
+    met_gumeJ1_3sopt_tr20,
+    met_gumeJ5_3sopt_tr20,
+    met_gfssdJ1_3sopt_tr20,
+    met_gfssdJ5_3sopt_tr20,
     met_gmmd_med,
    ]
 

@@ -16,22 +16,26 @@ def get_func_tuples():
         (func_name used in the experiments, label name, plot line style)
     """
     func_tuples = [
+            ('met_gumeJ1_3sopt_tr20', 'Rel-UME J1', 'C1-.'),
+            ('met_gumeJ5_3sopt_tr20', 'Rel-UME J5', 'r-^'),
+            ('met_gfssdJ1_3sopt_tr20', 'Rel-FSSD J1', 'C4--'),
+            ('met_gfssdJ5_3sopt_tr20', 'Rel-FSSD J5', 'b-'),
+            ('met_gmmd_med', 'Rel-MMD', 'k-x'),
+
+
             ('met_gfssdJ1_3sopt_tr50', 'FSSD-opt3 J1', 'b-^'),
-            ('met_gfssdJ1_3sopt_tr20', 'FSSD-opt3 J1 20', 'b-'),
             ('met_gfssdJ5_3sopt_tr50', 'FSSD-opt3 J5', 'b-.h'),
-            ('met_gfssdJ5_3sopt_tr20', 'FSSD-opt3 J5 20', 'b-.'),
 
             ('met_gumeJ1_2V_rand', 'UME-rand J1', 'r--^'),
             ('met_gumeJ1_1V_rand', 'UME-rand J1 1V', 'y-'),
             ('met_gumeJ2_2V_rand', 'UME-rand J2', 'g--^'),
             ('met_gumeJ3_2V_rand', 'UME-rand J3', 'b--^'),
             ('met_gumeJ5_2V_rand', 'UME-rand J5', 'k--^'),
+
             ('met_gumeJ1_2sopt_tr50', 'UME-opt2 J1', 'r-.h'),
-            ('met_gumeJ1_3sopt_tr20', 'UME-opt3 J1 20%%', 'g--'),
             ('met_gumeJ1_3sopt_tr50', 'UME-opt3 J1', 'r-'),
-            ('met_gumeJ5_3sopt_tr20', 'UME-opt3 J5 20', 'g-'),
             ('met_gumeJ5_3sopt_tr50', 'UME-opt3 J5', 'k-'),
-            ('met_gmmd_med', 'MMD', 'm-<'),
+
 
             ]
     return func_tuples

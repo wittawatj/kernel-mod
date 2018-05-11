@@ -646,7 +646,7 @@ class SC_GaussUME(SC_UME):
         fac_min = 1e-2 
         fac_max = 1e2
         if gwidth_lb is None:
-            gwidth_lb = max(fac_min*med2, 1e-3)
+            gwidth_lb = max(fac_min*med2, 1e-2)
         if gwidth_ub is None:
             gwidth_ub = min(fac_max*med2, 1e5)
 
