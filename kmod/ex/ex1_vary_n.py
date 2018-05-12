@@ -78,6 +78,12 @@ def sample_pqr(ds_p, ds_q, ds_r, n, r, only_from_r=False):
 
 #-------------------------------------------------------
 
+def met_gumeJ5_2sopt_tr20(P, Q, data_source, n, r):
+    return met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=5, tr_proportion=0.2)
+
+def met_gumeJ1_2sopt_tr20(P, Q, data_source, n, r, J=1):
+    return met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=J, tr_proportion=0.2)
+
 def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
     UME-based three-sample test
@@ -124,10 +130,10 @@ def met_gumeJ1_2sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
         # optimization options
         opt_options = {
             'max_iter': 100,
-            'reg': 1e-3,
+            'reg': 1e-4,
             'tol_fun': 1e-6,
-            'locs_bounds_frac': 100,
-            'gwidth_lb': 0.1**2,
+            'locs_bounds_frac': 50,
+            'gwidth_lb': 0.1,
             'gwidth_ub': 10**2,
         }
 
@@ -450,6 +456,8 @@ from kmod.ex.ex1_vary_n import met_gfssdJ5_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gumeJ1_2V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_1V_rand
 from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr50
+from kmod.ex.ex1_vary_n import met_gumeJ1_2sopt_tr20
+from kmod.ex.ex1_vary_n import met_gumeJ5_2sopt_tr20
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gumeJ5_3sopt_tr20
@@ -471,6 +479,9 @@ method_funcs = [
     #met_gumeJ1_2sopt_tr50,
     # met_gfssdJ1_3sopt_tr20,
     #met_gumeJ1_3sopt_tr50,
+
+    met_gumeJ1_2sopt_tr20,
+    met_gumeJ5_2sopt_tr20,
 
     met_gumeJ1_3sopt_tr20,
     met_gumeJ5_3sopt_tr20,
@@ -548,7 +559,7 @@ def get_ns_pqrsource(prob_label):
 
         # H0 is true
         'stdnorm_h0_d50': (
-            [400, 800, 1200, 1600],
+            [400, 800, 1200, 1600, 2000],
 
             # p is closer. Should not reject.
             model.ComposedModel(p=density.IsotropicNormal(
