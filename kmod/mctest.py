@@ -213,6 +213,27 @@ class DC_FSSD(DCTest):
         return mean_h1, variance
 
     @staticmethod
+    def get_power_criterion_func(p, q, datar, k, l, reg=1e-7):
+        """
+        Return the power criterion function as a function of V (J x d),
+        assuming that V=W. The function is the difference of the squared
+        Stein witness functions, divided by the square root of the variance
+        under H1.
+
+        """
+        def power_cri(V):
+            # TODO: This is not efficient. Should be good enough for plotting
+            # purpose.
+            J = V.shape[0]
+            values = np.zeros(J)
+            for i, v in enumerate(V):
+                Vi = v.reshape([1, -1])
+                values[i] = DC_FSSD.power_criterion(p, q, datar,
+                        k, l, Vi, Vi, reg=reg)
+            return values
+        return power_cri
+
+    @staticmethod
     def power_criterion(p, q, datar, k, l, V, W, reg=1e-3):
         """"
         Compute the power criterion of the FSSD-based model comparison test .
@@ -409,6 +430,7 @@ class SC_UME(SCTest):
         self.umep = tst.UMETest(V, k)
         self.umeq = tst.UMETest(W, l)
 
+
     def compute_stat(self, dat):
         """
         Compute the test statistic:
@@ -496,6 +518,50 @@ class SC_UME(SCTest):
         var_pqr = t1-t2
         var_h1 = var_pr -2.0*var_pqr + var_qr
         return mean_h1, var_h1
+
+    def get_relative_sqwitness(self, dat):
+        """
+        Return a function taking V (J x d), and returning a length-J numpy array
+        containing evaluations of the difference between squared witness functions 
+        wit(P, R)^2 - wit(Q, R)^2.
+        (The correctness of the function returned may be up to rescaling.)
+
+        :param dat: data from R
+        """
+        k = self.k
+        l = self.l
+        X = self.datap.data()
+        Y = self.dataq.data()
+        Z = dat.data()
+        wit_pr = tst.MMDWitness(k, X, Z)
+        wit_qr = tst.MMDWitness(l, Y, Z)
+
+        def rel_sqwitness(V):
+            wit_pr_evals = wit_pr(V)
+            wit_qr_evals = wit_qr(V)
+            diff_wit2 = wit_pr_evals**2 - wit_qr_evals**2
+            return diff_wit2
+        return rel_sqwitness
+
+    @staticmethod
+    def get_power_criterion_func(datap, dataq, datar, k, l, reg=1e-7):
+        """
+        Return the power criterion function as a function of V (J x d),
+        assuming that V=W. The function is the difference of the squared
+        witness functions, divided by the square root of the variance under H1.
+
+        """
+        def power_cri(V):
+            # TODO: This is not efficient. Should be good enough for plotting
+            # purpose.
+            J = V.shape[0]
+            values = np.zeros(J)
+            for i, v in enumerate(V):
+                Vi = v.reshape([1, -1])
+                values[i] = SC_UME.power_criterion(datap, dataq, datar,
+                        k, l, Vi, Vi, reg=reg)
+            return values
+        return power_cri
 
     @staticmethod
     def power_criterion(datap, dataq, datar, k, l, V, W, reg=1e-3): 
