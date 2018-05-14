@@ -9,6 +9,6 @@ __author__ = 'wittawat'
 #from kgof import data
 from kgof import density
 from kgof import kernel
-from kgof import util
+# from kgof import util
 
 

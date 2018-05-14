@@ -519,7 +519,8 @@ class SC_UME(SCTest):
         var_h1 = var_pr -2.0*var_pqr + var_qr
         return mean_h1, var_h1
 
-    def get_relative_sqwitness(self, dat):
+    @staticmethod
+    def get_relative_sqwitness(datap, dataq, datar, k, l):
         """
         Return a function taking V (J x d), and returning a length-J numpy array
         containing evaluations of the difference between squared witness functions 
@@ -528,11 +529,9 @@ class SC_UME(SCTest):
 
         :param dat: data from R
         """
-        k = self.k
-        l = self.l
-        X = self.datap.data()
-        Y = self.dataq.data()
-        Z = dat.data()
+        X = datap.data()
+        Y = dataq.data()
+        Z = datar.data()
         wit_pr = tst.MMDWitness(k, X, Z)
         wit_qr = tst.MMDWitness(l, Y, Z)
 
