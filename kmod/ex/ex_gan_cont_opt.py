@@ -74,7 +74,7 @@ def run_optimization(args, gp, gq, img_data, model_name, J=10):
     else:
         feat_func = model.features
 
-    sample_size = 1000  # number of images we want to generate
+    sample_size = args.sample_size  # number of images we want to generate
     samples_p = sample_images(gp, sample_size)
     datap = go.extract_feats(
         samples_p,
@@ -89,7 +89,8 @@ def run_optimization(args, gp, gq, img_data, model_name, J=10):
         upsample=True
     )
 
-    datar = util.subsample_rows(img_data, sample_size)
+    ind = util.subsample_ind(img_data.shape[0], sample_size)
+    datar = img_data[ind]
     datar = samples_p = go.extract_feats(
         datar.transpose((0, 3, 1, 2)),
         feat_func,
@@ -104,6 +105,9 @@ def run_optimization(args, gp, gq, img_data, model_name, J=10):
     XYZ = np.vstack((datap.data(), dataq.data(), datar.data()))
     med2 = util.meddistance(XYZ, subsample=1000)**2
 
+    if args.exp == 2:
+        gp = gq
+
     with util.ContextTimer() as t:
         Z_opt, gw_opt, opt_result = go.optimize_3sample_criterion(datap, dataq,
                                                                   datar, gp, gq,
@@ -116,6 +120,7 @@ def run_optimization(args, gp, gq, img_data, model_name, J=10):
     results['width'] = gw_opt
     results['opt'] = opt_result
     results['t'] = t
+    results['ind'] = ind
 
     return results
 
@@ -125,6 +130,9 @@ def load_pretrained_model(model_name):
     if model_name == 'inceptionv3':
         model = tm.load_inception_v3(pretrained='imagenet', gpu_id=go.gpu_id)
         go.set_model_input_size(299)
+        go.set_batch_size(64)
+    elif model_name == 'vgg16bn':
+        model = pretrainedmodels.__dict__[model_name]().cuda(go.gpu_id)
         go.set_batch_size(64)
     else:
         model = pretrainedmodels.__dict__[model_name]().cuda(go.gpu_id)
@@ -137,9 +145,13 @@ def main():
     group.add_argument('--gpu', action='store_true', default=True)
     group.add_argument('--cpu', action='store_false')
     parser.add_argument('--gpu_id', type=int, default=1)
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--save_dir', type=str, default='./returned_locations')
+    parser.add_argument('--sample_size', type=int, default=5000)
+    parser.add_argument('--exp', type=int, default=1)
     args = parser.parse_args()
+
+    gpu_setting(args)
 
     model_dir = '/nfs/nhome/live/heishirok/Work/kmod/problems/celeba/models/'
     gp = tm.Generator().cuda(go.gpu_id)
@@ -164,11 +176,30 @@ def main():
     img_data = np.array(img_data) / 255.  # maybe better to normalize differently for tests
 
     model_name = 'inceptionv3'
-    results = run_optimization(args, gp, gq, img_data, model_name, J=10)
+
+    exp_type = args.exp
+    if exp_type == 1:
+        results = run_optimization(args, gp, gq, img_data, model_name, J=10)
+    elif exp_type == 2:
+        results = run_optimization(args, gp, gq, img_data, model_name, J=5)
+    else:
+        data_dir = '../problems/celeba/img_align_celeba'
+        test_img_list = []
+        with open('../problems/celeba/test_list.txt') as f:
+            for line in f:
+                test_img_list.append(line.rstrip('\n'))
+            smile_img_list = []
+        with open('../problems/celeba/test_smile.txt') as f:
+            for line in f:
+                smile_img_list.append(line.rstrip('\n'))
+        paths = ['{}/{}'.format(data_dir, filename) for filename in smile_img_list]
+        smile_img_data = open_images(paths)
+        smile_img_data = smile_img_data / 255.
+        results = run_optimization(args, gp, gq, smile_img_data, model_name, J=10)
 
     dir_path = '{}/{}'.format(args.save_dir, model_name)
     os.makedirs(dir_path, exist_ok=True)
-    filename = time.strftime('%Y-%m-%d_%H-%M-%S_')
+    filename = '{}_{}'.format(time.strftime('%Y-%m-%d_%H-%M-%S'), exp_type)
     f = open('{}/{}.pkl'.format(dir_path, filename), 'wb')
     pickle.dump(results, f)
     f.close()
