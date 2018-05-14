@@ -52,11 +52,11 @@ def load_data_array(class_name):
     array = np.load(npy_path)
     return array
 
-def load_feature_array(class_name):
+def load_feature_array(class_name, feature_folder='inception_features'):
     """
     class_name can be airplane, automobile, ... or wholedata.
     """
-    npy_path = cifar10_file('inception_features', '{}.npy'.format(class_name))
+    npy_path = cifar10_file(feature_folder, '{}.npy'.format(class_name))
     array = np.load(npy_path)
     return array
 
