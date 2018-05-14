@@ -36,6 +36,23 @@ def data_file(*relative_path):
     dfolder = data_folder()
     return os.path.join(dfolder, *relative_path)
 
+def problems_folder():
+    """
+    Return the full path to the problems folder 
+    """
+    import kmod.config as config
+    problems_path = config.expr_configs['problems_path']
+    return problems_path
+    #return os.path.join(get_root(), 'data')
+
+def problems_file(*relative_path):
+    """
+    Access the file under the problems folder. The path is relative to the 
+    problems folder
+    """
+    pfolder = problems_folder()
+    return os.path.join(pfolder, *relative_path)
+
 def load_data_file(*relative_path):
     fpath = data_file(*relative_path)
     return pickle_load(fpath)

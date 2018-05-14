@@ -12,7 +12,7 @@ import os
 expr_configs = {
     # Full path to the directory to store temporary files when running
     # experiments.     
-    'scratch_path': '/home/nuke/git/tmp/kmod/',
+    'scratch_path': '/is/ei/wittawat/tmp/kmod',
 
     # Slurm partitions.
     # When using SlurmComputationEngine for running the experiments, the paritions (groups of computing nodes)
@@ -21,9 +21,16 @@ expr_configs = {
     'slurm_partitions': None,
 
     # Full path to the directory to store experimental results.
-    'expr_results_path': '/home/nuke/git/results/kmod/',
+    'expr_results_path': '/is/ei/wittawat/results/kmod',
+
+
+    # Full path to the problems directory
+    # A "problems" directory contains subdirectories, each containing all files
+    # related to that particular problem e.g., cifar10, LSUN, etc.
+    'problems_path': os.path.join(os.path.dirname(glo.get_root()), 'problems'),
+
 
     # Full path to the data directory
-    'data_path': os.path.join(os.path.dirname(glo.get_root()), 'data')
+    'data_path': os.path.join(os.path.dirname(glo.get_root()), 'data'),
 }
 
