@@ -363,6 +363,9 @@ def met_gfssdJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
 
 def met_gmmd_med(P, Q, data_source, n, r):
     """
+    Use met_gmmd_med_bounliphone(). It uses the median heuristic following
+    Bounliphone et al., 2016.
+
     Bounliphone et al., 2016's MMD-based 3-sample test.
     * Gaussian kernel. 
     * Gaussian width = mean of (median heuristic on (X, Z), median heuristic on
@@ -395,6 +398,39 @@ def met_gmmd_med(P, Q, data_source, n, r):
     return {
             # This key "test" can be removed.             
             #'test': scmmd, 
+            'test_result': scmmd_result, 'time_secs': t.secs}
+
+def met_gmmd_med_bounliphone(P, Q, data_source, n, r):
+    """
+    Bounliphone et al., 2016's MMD-based 3-sample test.
+    * Gaussian kernel. 
+    * Gaussian width = chosen as described in https://github.com/wbounliphone/relative_similarity_test/blob/4884786aa3fe0f41b3ee76c9587de535a6294aee/relativeSimilarityTest_finalversion.m 
+    * Use full sample for testing (no
+    holding out for optimization)
+    """
+    if not P.has_datasource() or not Q.has_datasource():
+        # Not applicable. Return {}.
+        return {}
+
+
+    ds_p = P.get_datasource()
+    ds_q = Q.get_datasource()
+    # sample some data 
+    datp, datq, datr = sample_pqr(ds_p, ds_q, data_source, n, r, only_from_r=False)
+
+    # Start the timer here
+    with util.ContextTimer() as t:
+        X, Y, Z = datp.data(), datq.data(), datr.data()
+
+        med2 = mct.SC_MMD.median_heuristic_bounliphone(X, Y, Z, subsample=1000, seed=r+3)
+        k = kernel.KGauss(sigma2=med2)
+
+        scmmd = mct.SC_MMD(datp, datq, k, alpha=alpha)
+        scmmd_result = scmmd.perform_test(datr)
+
+    return {
+            # This key "test" can be removed.             
+            # 'test': scmmd, 
             'test_result': scmmd_result, 'time_secs': t.secs}
 
 # Define our custom Job, which inherits from base class IndependentJob
@@ -462,6 +498,7 @@ from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr50
 from kmod.ex.ex1_vary_n import met_gumeJ1_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gumeJ5_3sopt_tr20
 from kmod.ex.ex1_vary_n import met_gmmd_med
+from kmod.ex.ex1_vary_n import met_gmmd_med_bounliphone
 
 #--- experimental setting -----
 ex = 1
@@ -480,14 +517,15 @@ method_funcs = [
     # met_gfssdJ1_3sopt_tr20,
     #met_gumeJ1_3sopt_tr50,
 
-    met_gumeJ1_2sopt_tr20,
-    met_gumeJ5_2sopt_tr20,
+    # met_gumeJ1_2sopt_tr20,
+    # met_gumeJ5_2sopt_tr20,
 
     met_gumeJ1_3sopt_tr20,
     met_gumeJ5_3sopt_tr20,
     met_gfssdJ1_3sopt_tr20,
     met_gfssdJ5_3sopt_tr20,
-    met_gmmd_med,
+    # met_gmmd_med,
+    met_gmmd_med_bounliphone,
    ]
 
 # If is_rerun==False, do not rerun the experiment if a result file for the current
@@ -565,7 +603,6 @@ def get_ns_pqrsource(prob_label):
             model.ComposedModel(p=density.IsotropicNormal(
                 np.hstack((0.5, np.zeros(49))),
                 1.0)),
-            # q is closer to r. Should reject.
             model.ComposedModel(p=density.IsotropicNormal(
                 np.hstack((1, np.zeros(49))), 
                 1.0)),

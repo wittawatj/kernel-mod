@@ -20,7 +20,9 @@ def get_func_tuples():
             ('met_gumeJ5_3sopt_tr20', 'Rel-UME J5', 'r-^'),
             ('met_gfssdJ1_3sopt_tr20', 'Rel-FSSD J1', 'C4--'),
             ('met_gfssdJ5_3sopt_tr20', 'Rel-FSSD J5', 'b-x'),
-            ('met_gmmd_med', 'Rel-MMD', 'k-'),
+
+            ('met_gmmd_med', 'Rel-MMD', 'k-.'),
+            ('met_gmmd_med_bounliphone', 'Rel-MMD medboun', 'k-'),
 
             ('met_gfssdJ1_3sopt_tr50', 'FSSD-opt3 J1', 'b-^'),
             ('met_gfssdJ5_3sopt_tr50', 'FSSD-opt3 J5', 'b-.h'),
