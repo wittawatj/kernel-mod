@@ -1010,5 +1010,64 @@ class SC_MMD(SCTest):
         scmmd = SC_MMD(data.Data(X), data.Data(Y), k, alpha)
         return scmmd.perform_test(data.Data(Z))
 
+    @staticmethod
+    def median_heuristic_bounliphone(X, Y, Z, subsample=1000, seed=287):
+        """
+        Return the median heuristic as implemented in 
+        https://github.com/wbounliphone/relative_similarity_test/blob/4884786aa3fe0f41b3ee76c9587de535a6294aee/relativeSimilarityTest_finalversion.m
+
+            % selection of theBandwidth;
+            myX = pdist2(X,Y);
+            myX = myX(:);
+            theBandwidth(1) = sqrt(median(myX(:))/2);
+            myX = pdist2(X,Z);
+            myX = myX(:);
+            theBandwidth(2) = sqrt(median(myX(:))/2);
+            theBandwidth=mean(theBandwidth);
+            params.sig=theBandwidth;
+            localSig=params.sig;
+
+        The existence of sqrt(..) above does not make sense. Probably they
+        thought pdist2 returns squared Euclidean distances.  In fact, it appears
+        to return just Euclidean distances. Having sqrt(..) above would lead to
+        the use of square root of Euclidean distances.
+        The computation in the code above is for v (Gaussian width) where the
+        Gaussian kernel is exp(-|x-y|^2/v^2) (no factor of 2 in the denominator).
+
+        We translate the above code into our parameterization 
+        exp(-|x-y|^2/(2*s2)) where s is the squared Gaussian width.
+        We implement the following
+        code by keeping the sqrt above, and assuming that pdist2(...) returns
+        squared Euclidean distances. So,
+
+        s2 = 0.5*mean([median(squared_pdist(Y, Z))**0.5, median(squared_pdist(X,Z))**0.5 ])**2
+
+        * X, Y: samples from two models.
+        * Z: reference sample 
+        """
+        # subsample first
+        nx = X.shape[0]
+        ny = Y.shape[0]
+        nz = Z.shape[0]
+        if nx != ny:
+            raise ValueError('X and Y do not have the same sample size. nx={}, ny={}'.format(nx, ny))
+        if ny != nz:
+            raise ValueError('Y and Z do not have the same sample size. ny={}, nz={}'.format(ny, nz))
+        n = nx
+        assert subsample > 0
+        with util.NumpySeedContext(seed=seed):
+            ind = np.random.choice(n, min(subsample, n), replace=False)
+            X = X[ind, :]
+            Y = Y[ind, :]
+            Z = Z[ind, :]
+
+        sq_pdist_yz = util.dist_matrix(Y, Z)**2
+        med_yz = np.median(sq_pdist_yz)**0.5
+
+        sq_pdist_xz = util.dist_matrix(X, Z)**2
+        med_xz = np.median(sq_pdist_xz)**0.5
+        sigma2 = 0.5*np.mean([med_yz, med_xz])**2
+        return sigma2
+
 
 # end of class SC_MMD
