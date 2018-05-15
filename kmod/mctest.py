@@ -607,10 +607,8 @@ class SC_UME(SCTest):
                 }
         """
         if mode == 'mean':
-            medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
-            medyz = util.meddistance(np.vstack((Y, Z)), subsample=1000)
-            mean_medxyz = np.mean([medxz, medyz])
-            gwidth = mean_medxyz**2
+            mean_medxyz2 = SC_MMD.median_heuristic_bounliphone(X, Y, Z, subsample=1000)
+            gwidth = mean_medxyz2
         else:
             XYZ = np.vstack((X, Y, Z))
             med2 = util.meddistance(XYZ, subsample=1000)**2
@@ -998,10 +996,8 @@ class SC_MMD(SCTest):
                 }
         """
         if mode == 'mean':
-            medxz = util.meddistance(np.vstack((X, Z)), subsample=1000)
-            medyz = util.meddistance(np.vstack((Y, Z)), subsample=1000)
-            mean_medxyz = np.mean([medxz, medyz])
-            gwidth = mean_medxyz**2
+            mean_medxyz2 = SC_MMD.median_heuristic_bounliphone(X, Y, Z, subsample=1000)
+            gwidth = mean_medxyz2
         else:
             XYZ = np.vstack((X, Y, Z))
             med2 = util.meddistance(XYZ, subsample=1000)**2
