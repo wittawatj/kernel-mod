@@ -1,62 +1,50 @@
 """
-Code for running experiments on the cifar10 data.
+Code for running experiments on the celeba data.
 
 By default, assume the following directory structure:
 
 
 kmod/problems/cifar10/
 ├── data
-│   ├── airplane.npy
-│   ├── automobile.npy
-│   ├── bird.npy
-│   ├── cat.npy
-│   ├── deer.npy
-│   ├── dog.npy
-│   ├── frog.npy
-│   ├── horse.npy
-│   ├── ship.npy
-│   └── truck.npy
+│   ├── gen_smile.npy
+│   ├── gen_nonsmile.npy
+│   ├── ref_smile.npy
+│   └── ref_smile.npy
 ├── inception_features
-│   ├── airplane.npy
-│   ├── automobile.npy
-│   ├── bird.npy
-│   ├── cat.npy
-│   ├── deer.npy
-│   ├── dog.npy
-│   ├── frog.npy
-│   ├── horse.npy
-│   ├── ship.npy
-│   ├── truck.npy
-│   └── wholedata.npy
+│   ├── gen_smile.npy
+│   ├── gen_nonsmile.npy
+│   ├── ref_smile.npy
+│   └── ref_nonsmile.npy
 
-path to cifar10/ can be changed in kmod.config.py
+path to celeba/ can be changed in kmod.config.py
 """
 from kmod import util, glo, log
 import autograd.numpy as np
 import os
 
-cifar10_folder = glo.problems_file('cifar10')
+celeba_folder = glo.problems_file('celeba')
+celeba_classes = ['gen_smile', 'gen_nonsmile', 'ref_smile', 'ref_nonsmile']
+celeba_class_ind_dict = dict(zip((celeba_classes), range(len(celeba_classes))))
 
-cifar10_classes = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
-          'dog', 'frog', 'horse', 'ship', 'truck']
-cifar10_class_ind_dict = dict(zip(cifar10_classes, range(10)))
 
-def cifar10_file(*relative_path):
-    return os.path.join(cifar10_folder, *relative_path)
+def celeba_file(*relative_path):
+    return os.path.join(celeba_folder, *relative_path)
+
 
 def load_data_array(class_name):
     """
-    class_name can be airplane, automobile, ....
+    class_name can be gen_smile, ref_nonsmile, ....
     """
-    npy_path = cifar10_file('data', '{}.npy'.format(class_name))
+    npy_path = celeba_file('data', '{}.npy'.format(class_name))
     array = np.load(npy_path)
     return array
+
 
 def load_feature_array(class_name, feature_folder='inception_features'):
     """
     class_name can be airplane, automobile, ... or wholedata.
     """
-    npy_path = cifar10_file(feature_folder, '{}.npy'.format(class_name))
+    npy_path = celeba_file(feature_folder, '{}.npy'.format(class_name))
     array = np.load(npy_path)
     return array
 
@@ -69,12 +57,12 @@ def load_stack(class_data_loader, classes=None, seed=28, max_class_size=None):
         points in each class.
     """
     if classes is None:
-        classes = cifar10_classes
+        classes = get_classes()
     list_arrays = []
     label_arrays = []
     with util.NumpySeedContext(seed=seed):
         for c in classes:
-            log.l().info('Loading cifar10 class: {}'.format(c))
+            log.l().info('Loading celeba class: {}'.format(c))
             arr = class_data_loader(c)
             nc = arr.shape[0]
             if max_class_size is not None:
@@ -83,7 +71,7 @@ def load_stack(class_data_loader, classes=None, seed=28, max_class_size=None):
                 ncmax = nc
             Ind = util.subsample_ind(nc, ncmax, seed=seed+3)
             sub_arr = arr[Ind, :]
-            class_label = cifar10_class_ind_dict[c]
+            class_label = celeba_class_ind_dict[c]
             Yc = np.ones(ncmax)*class_label
 
             list_arrays.append(sub_arr)
@@ -94,6 +82,7 @@ def load_stack(class_data_loader, classes=None, seed=28, max_class_size=None):
     assert stack.shape[0] == len(label_stack)
     return stack, label_stack
 
+
 def load_stack_data(classes=None, seed=28, max_class_size=None):
     """
     Load all the numpy array data (images) in the specified list of classes (as strings).
@@ -102,6 +91,7 @@ def load_stack_data(classes=None, seed=28, max_class_size=None):
     return (X, Y) where X = stack of all the data, Y = one-dim numpy array of class indices
     """
     return load_stack(load_data_array, classes, seed, max_class_size)
+
 
 def load_stack_feature(classes=None, seed=28, max_class_size=None):
     """
@@ -114,4 +104,4 @@ def load_stack_feature(classes=None, seed=28, max_class_size=None):
 
 
 def get_classes():
-    return cifar10_classes 
+    return celeba_classes
