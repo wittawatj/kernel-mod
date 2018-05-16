@@ -8,7 +8,7 @@ __author__ = 'wittawat'
 # https://github.com/wittawatj/kernel-gof
 #from kgof import data
 from kgof import density
-from kgof import kernel
+# from kgof import kernel
 # from kgof import util
 
 
