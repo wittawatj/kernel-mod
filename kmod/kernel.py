@@ -10,6 +10,7 @@ class KHoPoly(Kernel):
     """Homogeneous polynomial kernel of the form
     (x.dot(y))**d
     """
+
     def __init__(self, degree):
         assert degree > 0
         self.degree = degree
@@ -21,7 +22,7 @@ class KHoPoly(Kernel):
         return np.sum(X*Y, 1)**self.degree
 
     def __str__(self):
-        return 'KHoPoly(d=%d)'%self.degree
+        return 'KHoPoly(d=%d)' % self.degree
 
 # end of KHoPoly
 
@@ -37,7 +38,9 @@ class KKID(Kernel):
     def pair_eval(self, X, Y):
         d = X1.shape[1]
         assert d == Y.shape[1]
-        return (np.sum(X1, X2, axis=1)/d + 1.)**3
+        return (np.sum(X1*X2, axis=1)/d + 1.)**3
 
     def __str__(self):
         return 'KKID'
+
+# end KSTKernel
