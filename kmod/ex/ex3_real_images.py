@@ -9,6 +9,7 @@ from kmod.mctest import SC_GaussUME
 import kmod.glo as glo
 from kmod.ex import celeba as clba
 from kmod.ex import cifar10 as cf10
+from kmod.ex import lsun
 from collections import defaultdict
 from sympy import Rational
 from sympy import sympify
@@ -315,6 +316,133 @@ def met_gume_J_10_v_horse_ci10(mix_ratios, n, r, J=1):
     return met_gume_J_1_v_horse_ci10(mix_ratios, n, r, J=10)
 
 
+def met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=1):
+    sample_size = [n] * 3 + [J]
+
+    mix_ratios.append({'restaurant': sympify(1.0)})
+    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
+    return test_result
+
+
+def met_gume_J_10_v_rest_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=10)
+
+
+def met_gume_J_20_v_rest_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=20)
+
+
+def met_gume_J_40_v_rest_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=40)
+
+
+def met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=1):
+    sample_size = [n] * 3 + [J]
+
+    mix_ratios.append({'confroom': sympify(1.0)})
+    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
+    return test_result
+
+
+def met_gume_J_10_v_conf_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=10)
+
+
+def met_gume_J_20_v_conf_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=20)
+
+
+def met_gume_J_40_v_conf_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=40)
+
+
+def met_gume_J_120_v_conf_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=120)
+
+
+def met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=1):
+    sample_size = [n] * 3 + [J]
+
+    mix_ratios.append({'kitchen': sympify(1.0)})
+    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
+    return test_result
+
+
+def met_gume_J_10_v_kitchen_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=10)
+
+
+def met_gume_J_20_v_kitchen_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=20)
+
+
+def met_gume_J_40_v_kitchen_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=40)
+
+
+def met_gume_J_120_v_kitchen_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=120)
+
+
+def met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=4):
+    """
+    UME-based three-sample test for LSUN problems
+    with test locations being a mixture of kitchen/restaurant/confroom/bedroom
+    images of the equal proportion.
+        * Use J=4 test location by default.
+    """
+
+    sample_size = [n] * 3 + [J]
+    mix_ratios.append({'kitchen': Rational(1, 4), 'restaurant': Rational(1, 4),
+                       'confroom': Rational(1, 4), 'bedroom': Rational(1, 4),
+                       }
+                      )
+    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
+    return test_result
+
+
+def met_gume_J_20_v_mix_lsun(mix_ratios, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=20)
+
+
+def met_gume_J_40_v_mix_lsun(mix_ratios, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=40)
+
+
+def met_gume_J_120_v_mix_lsun(mix_ratios, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=120)
+
+
+def met_gume_J_160_v_mix_lsun(mix_ratios, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=160)
+
+
+def met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=1):
+    sample_size = [n] * 3 + [J]
+
+    mix_ratios.append({'3212_dcgan_20': sympify(1.0)})
+    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
+    return test_result
+
+
+def met_gume_J_10_v_3212e20_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=10)
+
+
+def met_gume_J_40_v_3212e20_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=40)
+
+
+def met_gume_J_120_v_3212e20_lsun(mix_ratios, n, r, J=1):
+    return met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=120)
+
+
+
 def sample_feat_array(class_spec, prob_module, seed=37):
     """
     Return a split of data in prob_module specified by class_spec.
@@ -339,7 +467,7 @@ def sample_feat_array(class_spec, prob_module, seed=37):
                 raise ValueError(err_msg)
             # load class data
             class_i = cs[0]
-            feas_i = prob_module.load_feature_array(class_i)
+            feas_i = prob_module.load_feature_array(class_i, feature_folder=feature_folder)
 
             # split each class according to the spec
             class_sizes_i = cs[1:]
@@ -489,6 +617,81 @@ def get_ns_pm_mixing_ratios(prob_label):
                  'airplane': Rational(500, 3500)}
             ]
         ),
+        'lsun_p_3212b_q_1232b_r_1313': (
+            [2000], lsun,
+            [{'3212_began': sp(1.0)}, {'1232_began': sp(1.0)},
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(3, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(3, 8)},
+             ]
+        ),
+        'lsun_p_3212b_q_1232b_r_1232': (
+            [2000], lsun,
+            [{'3212_began': sp(1.0)}, {'1232_began': sp(1.0)},
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
+             ]
+        ),
+        'lsun_p_3212d_q_1232d_r_1313': (
+            [2000], lsun,
+            [{'3212_dcgan': sp(1.0)}, {'1232_dcgan': sp(1.0)},
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(3, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(3, 8)},
+             ]
+        ),
+        'lsun_p_3212d_q_1232d_r_1232': (
+            [2000], lsun,
+            [{'3212_dcgan': sp(1.0)}, {'1232_dcgan': sp(1.0)},
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
+             ]
+        ),
+        'lsun_p_3212_q_1232_r_1313': (
+            [2000], lsun,
+            [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(3, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(3, 8)},
+             ]
+        ),
+        'lsun_p_3212_q_1232_r_1232': (
+            [2000], lsun,
+            [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
+             ]
+        ),
+        'lsun_p_3212_q_1232_r_3212': (
+            [2000], lsun,
+            [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+             {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
+             {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
+             ]
+        ),
+         'lsun_p_3212_q_3212_r_3212': (
+            [2000], lsun,
+            [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+             {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
+             {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
+             ]
+        ),
+        'lsun_p_e1_q_e10_r_e20': (
+            [2000], lsun,
+            [{'3212_dcgan_1': sp(1.0)},
+             {'3212_dcgan_10': sp(1.0)},
+             {'3212_dcgan_20': sp(1.0)},
+             ]
+        ),
     }
 
     if prob_label not in prob2tuples:
@@ -575,12 +778,36 @@ from kmod.ex.ex3_real_images import met_gume_J_40_v_nonsmile_celeba
 from kmod.ex.ex3_real_images import met_gume_J_10_v_mix_celeba
 from kmod.ex.ex3_real_images import met_gume_J_20_v_mix_celeba
 from kmod.ex.ex3_real_images import met_gume_J_40_v_mix_celeba
+from kmod.ex.ex3_real_images import met_gume_J_1_v_rest_lsun
+from kmod.ex.ex3_real_images import met_gume_J_10_v_rest_lsun
+from kmod.ex.ex3_real_images import met_gume_J_20_v_rest_lsun
+from kmod.ex.ex3_real_images import met_gume_J_40_v_rest_lsun
+from kmod.ex.ex3_real_images import met_gume_J_1_v_conf_lsun
+from kmod.ex.ex3_real_images import met_gume_J_10_v_conf_lsun
+from kmod.ex.ex3_real_images import met_gume_J_20_v_conf_lsun
+from kmod.ex.ex3_real_images import met_gume_J_40_v_conf_lsun
+from kmod.ex.ex3_real_images import met_gume_J_120_v_conf_lsun
+from kmod.ex.ex3_real_images import met_gume_J_1_v_kitchen_lsun
+from kmod.ex.ex3_real_images import met_gume_J_10_v_kitchen_lsun
+from kmod.ex.ex3_real_images import met_gume_J_20_v_kitchen_lsun
+from kmod.ex.ex3_real_images import met_gume_J_40_v_kitchen_lsun
+from kmod.ex.ex3_real_images import met_gume_J_120_v_kitchen_lsun
+from kmod.ex.ex3_real_images import met_gume_J_4_v_mix_lsun
+from kmod.ex.ex3_real_images import met_gume_J_20_v_mix_lsun
+from kmod.ex.ex3_real_images import met_gume_J_40_v_mix_lsun
+from kmod.ex.ex3_real_images import met_gume_J_120_v_mix_lsun
+from kmod.ex.ex3_real_images import met_gume_J_160_v_mix_lsun
+from kmod.ex.ex3_real_images import met_gume_J_1_v_3212e20_lsun
+from kmod.ex.ex3_real_images import met_gume_J_10_v_3212e20_lsun
+from kmod.ex.ex3_real_images import met_gume_J_40_v_3212e20_lsun
+from kmod.ex.ex3_real_images import met_gume_J_120_v_3212e20_lsun
+
 
 # --- experimental setting -----
 ex = 3
 
 # significance level of the test
-alpha = 0.01
+alpha = 0.05
 
 # repetitions for each sample size
 reps = 1
@@ -604,12 +831,28 @@ method_funcs = [
     met_kid_mmd,
     # met_fid_perm,
     # met_fid_nbstrp,
-    met_gume_J_10_v_mix_celeba,
-    met_gume_J_20_v_mix_celeba,
-    met_gume_J_40_v_mix_celeba,
+    #met_gume_J_10_v_mix_celeba,
+    #met_gume_J_20_v_mix_celeba,
+    #met_gume_J_40_v_mix_celeba,
+    #met_gume_J_20_v_mix_lsun,
+    #met_gume_J_40_v_mix_lsun,
+    #met_gume_J_120_v_mix_lsun,
+    #met_gume_J_160_v_mix_lsun,
+    #met_gume_J_10_v_conf_lsun,
+    #met_gume_J_20_v_conf_lsun,
+    #met_gume_J_40_v_conf_lsun,
+    #met_gume_J_120_v_conf_lsun,
+    #met_gume_J_10_v_kitchen_lsun,
+    #met_gume_J_20_v_kitchen_lsun,
+    #met_gume_J_40_v_kitchen_lsun,
+    #met_gume_J_120_v_kitchen_lsun,
+    met_gume_J_10_v_3212e20_lsun,
+    met_gume_J_40_v_3212e20_lsun,
+    met_gume_J_120_v_3212e20_lsun,
 ]
 
-prob_module = clba
+prob_module = lsun
+feature_folder = 'alexnet_features'
 # If is_rerun==False, do not rerun the experiment if a result file for the current
 # setting already exists.
 is_rerun = False
