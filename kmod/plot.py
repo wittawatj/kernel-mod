@@ -51,7 +51,7 @@ def set_default_matplotlib_options():
         #'weight' : 'bold',
         'size'   : 30
     }
-    matplotlib.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+    # matplotlib.rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
 
     # matplotlib.use('cairo')
     matplotlib.rc('text', usetex=True)

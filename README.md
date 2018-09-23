@@ -45,3 +45,6 @@ In total, there will be three repositories. During development make sure to
   of `X.dot(Y)`. `autograd` cannot differentiate the latter. Also, do not use
   `x += ...`.  Use `x = x + ..` instead.
 
+## Other repos
+
+* [https://github.com/janesjanes/GAN_training_code](https://github.com/janesjanes/GAN_training_code)

@@ -500,7 +500,7 @@ class SC_UME(SCTest):
         if var_pr <= 0:
             log.l().warning('Non-positive var_pr detected. Was {}'.format(var_pr))
         if var_qr <= 0:
-            log.l().warning('Non-positive var_qr detected. War {}'.format(var_qr))
+            log.l().warning('Non-positive var_qr detected. Was {}'.format(var_qr))
         #assert var_pr > 0, 'var_pr was {}'.format(var_pr)
         #assert var_qr > 0, 'var_qr was {}'.format(var_qr)
         mean_h1 = umehp - umehq
@@ -657,7 +657,7 @@ class SC_GaussUME(SC_UME):
         This optimization function is deterministic.
 
         - datap: a kgof.data.Data from P (model 1)
-       - dataq: a kgof.data.Data from Q (model 2)
+        - dataq: a kgof.data.Data from Q (model 2)
         - datar: a kgof.data.Data from R (data generating distribution)
         - V0: Jxd numpy array. Initial V containing J locations. For both
               UME(P, R) and UME(Q, R)
