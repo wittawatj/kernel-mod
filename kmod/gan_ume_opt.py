@@ -5,10 +5,12 @@ import scipy
 from numpy.core.umath_tests import inner1d
 import torch
 import torch.nn as nn
+from torch import optim
 from torch.autograd import Variable
 from torch.autograd.gradcheck import zero_gradients
 from kmod import data, kernel, util
 from kmod.mctest import SC_UME
+from kmod import log
 
 import types
 import functools
@@ -478,3 +480,117 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, model, locs,
         return best_loc_idx
 
     return greedy_search(J, fV)
+
+
+def ume_ustat_h1_mean_variance(feature_matrix, return_variance=True, 
+                               use_unbiased=True):
+    """
+    Compute the mean and variance of the asymptotic normal distribution
+    under H1 of the test statistic. The mean converges to a constant as
+    n->\infty.
+
+    feature_matrix: n x J feature matrix
+    return_variance: If false, avoid computing and returning the variance.
+    use_unbiased: If True, use the unbiased version of the mean. Can be
+        negative.
+
+    Return the mean [and the variance]
+    """
+    Z = feature_matrix
+    n = Z.size(0)
+    J = Z.size(1)
+    assert n > 1, 'Need n > 1 to compute the mean of the statistic.'
+    if use_unbiased:
+        # t1 = np.sum(np.mean(Z, axis=0)**2)*(n/float(n-1))
+        t1 = torch.sum(torch.mean(Z, dim=0)**2).mul(n).div(n-1)
+        # t2 = np.mean(np.sum(Z**2, axis=1))/float(n-1)
+        t2 = torch.mean(torch.sum(Z**2, dim=1)).div(n-1)
+        mean_h1 = t1 - t2
+    else:
+        # mean_h1 = np.sum(np.mean(Z, axis=0)**2)
+        mean_h1 = torch.sum(torch.mean(Z, dim=0)**2)
+
+    if return_variance:
+        # compute the variance 
+        # mu = np.mean(Z, axis=0)  # length-J vector
+        mu = torch.mean(Z, dim=0)  # length-J vector
+        # variance = 4.0*np.mean(np.dot(Z, mu)**2) - 4.0*np.sum(mu**2)**2
+        variance = 4.0*torch.mean(torch.matmul(Z, mu)**2) - 4.0*torch.sum(mu**2)**2
+        return mean_h1, variance
+    else:
+        return mean_h1
+
+
+def ume_feature_matrix(self, X, Y, V, k):
+    J = V.size(0)
+
+    # n x J feature matrix
+    g = k.eval(X, V) / np.sqrt(J)
+    h = k.eval(Y, V) / np.sqrt(J)
+    Z = g - h
+    return Z
+
+
+def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0,
+                                   Zq0, gwidth0, reg=1e-3, max_iter=100,
+                                   tol_fun=1e-6, disp=False, locs_bounds_frac=100,
+                                   gwidth_lb=None, gwidth_ub=None, cuda=None):
+
+    def power_criterion(X, Y, Z, Vp, Vq, k, reg):
+        fea_pr = ume_feature_matrix(X, Z, Vp, k)  # n x Jp
+        fea_qr = ume_feature_matrix(Y, Z, Vq, k)  # n x Jq
+        umehp, var_pr = ume_ustat_h1_mean_variance(fea_pr, return_variance=True,
+                                                   use_unbiased=True)
+        umehq, var_qr = ume_ustat_h1_mean_variance(fea_qr, return_variance=True,
+                                                   use_unbiased=True)
+
+        if (var_pr <= 0).any():
+            log.l().warning('Non-positive var_pr detected. Was {}'.format(var_pr))
+        if (var_qr <= 0).any():
+            log.l().warning('Non-positive var_qr detected. War {}'.format(var_qr))
+        # assert var_pr > 0, 'var_pr was {}'.format(var_pr)
+        # assert var_qr > 0, 'var_qr was {}'.format(var_qr)
+        mean_h1 = umehp - umehq
+
+        if not return_variance:
+            return mean_h1
+
+        # mean features
+        mean_pr = torch.mean(fea_pr, dim=0)
+        mean_qr = torch.mean(fea_qr, dim=0)
+        t1 = 4.0*torch.mean(torch.matmul(fea_pr, mean_pr)*torch.matmul(fea_qr, mean_qr))
+        t2 = 4.0*torch.sum(mean_pr**2)*torch.sum(mean_qr**2)
+
+        # compute the cross-covariance
+        var_pqr = t1 - t2
+        var_h1 = var_pr - 2.0*var_pqr + var_qr
+
+        power_criterion = mean_h1 / torch.sqrt(var_h1 + reg)
+        return power_criterion
+
+    gwidth = to_torch_variable(gwidth0, requires_grad=True)
+    Zp = to_torch_variable(Zp0, requires_grad=True)
+    Zq = to_torch_variable(Zq0, requires_grad=True)
+
+    X = to_torch_variable(datap.data(), requires_grad=False)
+    Y = to_torch_variable(dataq.data(), requires_grad=False)
+    Z = to_torch_variable(datar.data(), requires_grad=False)
+
+    optimizer = optim.LBFGS([gwidth, Zp, Zq], lr=1e-2, max_iter=max_iterk)
+    transform = nn.Upsample((model_input_size, model_input_size),
+                            mode='bilinear')
+
+    k = kernel.KGaussPytorch(gwidth**2)
+    for i in range(max_iter):
+        def closure():
+            optimizer.zero_grad()
+            im_p = gen_p(Zp)
+            im_q = gen_q(Zq)
+            Vp = model(transform(im_p))
+            Vq = model(transform(im_q))
+            obj = -power_criterion(X, Y, Z, Vp, Vq, k, reg)
+            obj.backward()
+            return obj
+        optimizer.step(closure)
+
+    return Zp, Zq, gwidth

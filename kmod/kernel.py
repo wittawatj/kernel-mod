@@ -44,3 +44,38 @@ class KKID(Kernel):
         return 'KKID'
 
 # end KSTKernel
+
+
+class KGaussPytorch(Kernel):
+
+    def __init__(self, sigma2):
+        """
+        sigma2: torch.autograd.Variable
+        """
+        assert sigma2 > 0, 'sigma2 must be > 0. Was %s'%str(sigma2)
+        self.sigma2 = sigma2
+
+    def eval(self, X, Y):
+        """
+        Evaluate the Gaussian kernel on the two 2d Torch Tensors
+
+        Parameters
+        ----------
+        X : n1 x d Torch Tensor
+        Y : n2 x d Torch Tensor
+
+        Return
+        ------
+        K : a n1 x n2 Gram matrix.
+        """
+        sumx2 = torch.sum(X**2, dim=1).view(-1, 1)
+        sumy2 = torch.sum(Y**2, dim=1).view(1, -1)
+        D2 = sumx2 - 2*torch.matmul(X, Y.transpose(1, 0)) + sumy2
+        K = torch.exp(-D2.div(2.0*self.sigma2))
+        return K
+
+    def __str__(self):
+        return "KGaussPytorch(%.3f)" % self.sigma2
+
+
+# end KGaussPytorch
