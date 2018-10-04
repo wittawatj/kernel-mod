@@ -2,8 +2,16 @@
 A module containing kernel functions.
 """
 
+from __future__ import division
+
+from builtins import str
+from past.utils import old_div
+from builtins import object
+from future.utils import with_metaclass
+
 from kgof.kernel import *
 import autograd.numpy as np
+import torch
 
 
 class KHoPoly(Kernel):
@@ -45,9 +53,12 @@ class KKID(Kernel):
 
 # end KSTKernel
 
-
-class KGaussPytorch(Kernel):
-
+class PTKGauss(Kernel):
+    """
+    Pytorch implementation of the isotropic Gaussian kernel.
+    Parameterization is the same as in the density of the standard normal
+    distribution. sigma2 is analogous to the variance.
+    """
     def __init__(self, sigma2):
         """
         sigma2: torch.autograd.Variable
@@ -74,8 +85,28 @@ class KGaussPytorch(Kernel):
         K = torch.exp(-D2.div(2.0*self.sigma2))
         return K
 
+    def pair_eval(self, X, Y):
+        """
+        Evaluate k(x1, y1), k(x2, y2), ...
+
+        Parameters
+        ----------
+        X, Y : n x d Pytorch tensors
+
+        Return
+        -------
+        a Torch tensor with length n
+        """
+        (n1, d1) = X.shape
+        (n2, d2) = Y.shape
+        assert n1==n2, 'Two inputs must have the same number of instances'
+        assert d1==d2, 'Two inputs must have the same dimension'
+        D2 = torch.sum( (X-Y)**2, 1)
+        Kvec = torch.exp(old_div(-D2,(2.0*self.sigma2)))
+        return Kvec
+
     def __str__(self):
-        return "KGaussPytorch(%.3f)" % self.sigma2
+        return "PTKGauss(%.3f)" % self.sigma2
 
 
-# end KGaussPytorch
+# end PTKGauss
