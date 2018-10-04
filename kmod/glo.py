@@ -3,9 +3,9 @@
 __author__ = 'wittawat'
 
 import kmod
+import kmod.log as log
 import os
 import pickle
-
 
 def get_root():
     """Return the full path to the root of the package"""
@@ -42,6 +42,7 @@ def problems_folder():
     """
     import kmod.config as config
     problems_path = config.expr_configs['problems_path']
+    log.l().warning('The function problems_folder() is deprecated. Use prob_model_folder() instead')
     return problems_path
     #return os.path.join(get_root(), 'data')
 
@@ -52,6 +53,17 @@ def problems_file(*relative_path):
     """
     pfolder = problems_folder()
     return os.path.join(pfolder, *relative_path)
+
+def prob_model_folder(*relative_path):
+    """
+    Return the full path to the folder for storing models for specific
+    problems.
+    """
+    import kmod.config as config
+    path = config.expr_configs['prob_model_path']
+    if relative_path:
+        path = os.path.join(path, *relative_path)
+    return path
 
 def load_data_file(*relative_path):
     fpath = data_file(*relative_path)

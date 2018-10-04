@@ -580,7 +580,7 @@ def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0
     transform = nn.Upsample((model_input_size, model_input_size),
                             mode='bilinear')
 
-    k = kernel.KGaussPytorch(gwidth**2)
+    k = kernel.PTKGauss(gwidth**2)
     for i in range(max_iter):
         def closure():
             optimizer.zero_grad()
