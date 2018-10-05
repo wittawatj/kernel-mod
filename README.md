@@ -92,12 +92,12 @@ To have access to our shared Google Drive folder:
    2. `cd` to this subfolder and run `drive pull`. This will pull all contents 
    from the remote `kmod_share` folder to your local folder.
 
-3. In `settings.ini` (in this repository), modify the value of the `share_path`
-   key to point to your local folder `Gdrive/condgan_share/`. 
+3. In `kmod.config.py`, modify the value of `shared_resource_path`
+   key to point to your local folder `Gdrive/kmod_share/`. 
 
 * Make sure to do `drive pull` often to get the latest update.
 
-* After you make changes or add files, run `drive push` under `condgan_share`
+* After you make changes or add files, run `drive push` under `kmod_share`
    to push the contents to the remote folder for other collaborators to see.
 
         
