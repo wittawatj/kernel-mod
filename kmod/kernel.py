@@ -59,12 +59,12 @@ class PTKGauss(Kernel):
     Parameterization is the same as in the density of the standard normal
     distribution. sigma2 is analogous to the variance.
     """
-    def __init__(self, sigma2):
+    def __init__(self, sigma):
         """
         sigma2: torch.autograd.Variable
         """
-        assert sigma2 > 0, 'sigma2 must be > 0. Was %s'%str(sigma2)
-        self.sigma2 = sigma2
+        assert (sigma > 0).any(), 'sigma2 must be > 0. Was %s'%str(sigma)
+        self.sigma = sigma
 
     def eval(self, X, Y):
         """
@@ -79,10 +79,11 @@ class PTKGauss(Kernel):
         ------
         K : a n1 x n2 Gram matrix.
         """
+        sigma2 = torch.sqrt(self.sigma**2)**2
         sumx2 = torch.sum(X**2, dim=1).view(-1, 1)
         sumy2 = torch.sum(Y**2, dim=1).view(1, -1)
         D2 = sumx2 - 2*torch.matmul(X, Y.transpose(1, 0)) + sumy2
-        K = torch.exp(-D2.div(2.0*self.sigma2))
+        K = torch.exp(-D2.div(2.0*sigma2))
         return K
 
     def pair_eval(self, X, Y):
