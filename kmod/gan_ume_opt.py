@@ -19,7 +19,7 @@ import functools
 gpu_mode = True
 gpu_id = 2
 image_size = 64
-model_input_size = 224
+model_input_size = 299
 batch_size = 128
 
 
@@ -521,7 +521,7 @@ def ume_ustat_h1_mean_variance(feature_matrix, return_variance=True,
         return mean_h1
 
 
-def ume_feature_matrix(self, X, Y, V, k):
+def ume_feature_matrix(X, Y, V, k):
     J = V.size(0)
 
     # n x J feature matrix
@@ -552,8 +552,6 @@ def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0
         # assert var_qr > 0, 'var_qr was {}'.format(var_qr)
         mean_h1 = umehp - umehq
 
-        if not return_variance:
-            return mean_h1
 
         # mean features
         mean_pr = torch.mean(fea_pr, dim=0)
@@ -576,7 +574,7 @@ def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0
     Y = to_torch_variable(dataq.data(), requires_grad=False)
     Z = to_torch_variable(datar.data(), requires_grad=False)
 
-    optimizer = optim.LBFGS([gwidth, Zp, Zq], lr=1e-2, max_iter=max_iterk)
+    optimizer = optim.LBFGS([gwidth, Zp, Zq], lr=1e-2, max_iter=max_iter)
     transform = nn.Upsample((model_input_size, model_input_size),
                             mode='bilinear')
 
@@ -584,12 +582,12 @@ def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0
     for i in range(max_iter):
         def closure():
             optimizer.zero_grad()
-            im_p = gen_p(Zp)
-            im_q = gen_q(Zq)
+            im_p = gen_p(Zp.view(-1, gen_p.z_size, 1, 1))
+            im_q = gen_q(Zq.view(-1, gen_q.z_size, 1, 1))
             Vp = model(transform(im_p))
             Vq = model(transform(im_q))
             obj = -power_criterion(X, Y, Z, Vp, Vq, k, reg)
-            obj.backward()
+            obj.backward(retain_graph=True)
             return obj
         optimizer.step(closure)
 
