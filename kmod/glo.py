@@ -24,7 +24,7 @@ def data_folder():
     Return the full path to the data folder 
     """
     import kmod.config as config
-    data_path = config.expr_configs['data_path']
+    data_path = config.resource_configs['data_path']
     return data_path
     #return os.path.join(get_root(), 'data')
 
@@ -41,10 +41,20 @@ def problems_folder():
     Return the full path to the problems folder 
     """
     import kmod.config as config
-    problems_path = config.expr_configs['problems_path']
+    problems_path = config.resource_configs['problems_path']
     log.l().warning('The function problems_folder() is deprecated. Use prob_model_folder() instead')
     return problems_path
     #return os.path.join(get_root(), 'data')
+
+def shared_resource_folder(*relative_path):
+    """
+    Return the full path to the shared resource folder.
+    """
+    import kmod.config as config
+    path = config.resource_configs['shared_resource_path']
+    if relative_path:
+        path = os.path.join(path, *relative_path)
+    return path
 
 def problems_file(*relative_path):
     """
@@ -60,7 +70,7 @@ def prob_model_folder(*relative_path):
     problems.
     """
     import kmod.config as config
-    path = config.expr_configs['prob_model_path']
+    path = config.resource_configs['prob_model_path']
     if relative_path:
         path = os.path.join(path, *relative_path)
     return path

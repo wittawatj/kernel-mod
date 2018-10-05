@@ -1,6 +1,7 @@
 import argparse
 import kmod.glo as glo
 import kmod.log as log
+import kmod.gen as gen
 
 import math
 import numpy as np
@@ -291,9 +292,9 @@ def main():
     parser.add_argument('--lr', type=float, default=0.0002, help='adam: learning rate')
     parser.add_argument('--b1', type=float, default=0.5, help='adam: decay of first order momentum of gradient')
     parser.add_argument('--b2', type=float, default=0.999, help='adam: decay of first order momentum of gradient')
-    parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads to use during batch generation')
+    parser.add_argument('--n_cpu', type=int, default=2, help='number of cpu threads to use during batch generation')
     parser.add_argument('--latent_dim', type=int, default=100, help='dimensionality of the latent space')
-    parser.add_argument('--sample_interval', type=int, default=400, help='interval between image sampling')
+    parser.add_argument('--sample_interval', type=int, default=400, help='Create sample images every this many number of minibatch updates')
     parser.add_argument('--data_dir', type=str, default=glo.data_file('mnist/'), help='Full path to the folder containing Mnist training data. Mnist data will be downloaded if not existed already.')
     parser.add_argument('--prob_model_dir', type=str,
             default=glo.prob_model_folder('mnist_dcgan'), help='Full path to the folder to be used to save mnist-dcgan related files e.g., generated images, model.')
@@ -312,10 +313,20 @@ def main():
     log.l().info('Starting training')
     dcgan.train()
 
-    # save the generator
+    # save the generator as an object of type kmod.gen.PTNoiseTransformer
     g = dcgan.generator
-    g.save(model_fpath)
+    f_sample_noise = dcgan.sample_noise
 
+    # get output sizes by sampling one image
+    cuda = True if torch.cuda.is_available() else False
+    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+    z = Variable(f_sample_noise(1).type(Tensor))
+    gen_img = g(z)
+    in_out_shapes = (dcgan.latent_dim, gen_img.shape[1:])
+    G = gen.PTNoiseTransformerAdapter(module=g, f_sample_noise=f_sample_noise,
+            in_out_shapes=in_out_shapes, tensor_type=Tensor)
+    # save() is a method from kmod.net.SerializableModule
+    G.save(model_fpath)
 
 if __name__ == '__main__':
     main()

@@ -23,7 +23,10 @@ expr_configs = {
     # Full path to the directory to store experimental results.
     'expr_results_path': '/is/ei/wittawat/results/kmod',
 
+}
 
+resource_configs = {
+        
     # Full path to the problems directory
     # A "problems" directory contains subdirectories, each containing all files
     # related to that particular problem e.g., cifar10, LSUN, etc.
@@ -38,5 +41,13 @@ expr_configs = {
 
     # Full path to the data directory
     'data_path': os.path.join(os.path.dirname(glo.get_root()), 'data'),
+
+    # Full path to the root directory of the shared folder. This folder contains
+    # all resource files (e.g., data, trained models) that are released by the
+    # authors. 
+    'shared_resource_path': '/is/ei/wittawat/Gdrive/kmod_share/',
 }
+
+
+
 

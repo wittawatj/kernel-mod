@@ -290,3 +290,25 @@ def get_density_cmap():
     list_colors.insert(0, (1, 1, 1))
     lscm = matplotlib.colors.LinearSegmentedColormap.from_list("my_Reds", list_colors)
     return lscm
+
+
+def show_torch_imgs(imgs, nrow=8, figsize=(8, 5), **opt):
+    """
+    A convenient function to show a stack of images (Pytorch tensors).
+    """
+    import torchvision
+    import torch
+    if not torch.is_tensor(imgs):
+        # Not a torch tensor. Assume that it is torch.autograd.Variable
+        # Try to get the tensor inside the Variable.
+        try:
+            imgs = imgs.data
+        except:
+            raise ValueError('Expect input imgs to be a torch Tensor or torch.autograd.Variable.')
+    # https://gist.github.com/anonymous/bf16430f7750c023141c562f3e9f2a91
+    img = torchvision.utils.make_grid(imgs, nrow=nrow, **opt)
+    npimg = img.cpu().numpy()
+
+    plt.figure(figsize=figsize)
+    plt.imshow(np.transpose(npimg, (1, 2, 0)), interpolation='nearest')
+        

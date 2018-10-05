@@ -48,3 +48,58 @@ In total, there will be three repositories. During development make sure to
 ## Other repos
 
 * [https://github.com/janesjanes/GAN_training_code](https://github.com/janesjanes/GAN_training_code)
+
+## Sharing resource files 
+
+Generally it is not a good idea to push large files (e.g., trained GAN models)
+to this repository. Since git maintains all the history, the size of the
+repository can get large quickly. For sharing non-text-file resources (e.g.,
+GAN models, a large collection of sample images), we will use Google Drive.
+I recommend a command-line client called `drive` which can be found
+[here](https://github.com/odeke-em/drive). If you use a commonly used Linux
+distribution, see [this
+page](https://github.com/odeke-em/drive/blob/master/platform_packages.md) for
+installation instructions.
+If you cannot use `drive` or prefer not to, you can use other clients that you
+like (for instance, [the official
+client](https://www.google.com/drive/download/)). You can also just go with
+manual downloading of all the shared files from
+the web, and saving them to your local directory. A drawback of this approach
+is that, when we update some files, you will need to manually update them. With
+the `drive` client, you simply run `drive pull` to get the latest update
+(`drive` does not automatically synchronize in realtime. Other clients might.). 
+
+To have access to our shared Google Drive folder:
+
+1. Ask Wittawat to share with you the folder on Google Drive. You will need a
+   Google account. Make sure you have a write access so you can push your
+   files. Once shared, on [your Google Drive page](https://drive.google.com),
+   you should see a folder called `kmod_share` on the "Shared with me" tab.
+   This folder contains all the resource files (not source code) related to
+   this project. Move it to your drive so that you can sync later by right
+   clicking, and selecting "Add to my drive".
+
+
+2. On your local machine, create a parent folder anywhere to contain all
+   contents on your Google Drive (e.g., `~/Gdrive/`). We will refer to this
+   folder as `Gdrive/`. Assume that you use the `drive` client. `cd` to this
+   folder and run `drive init` to mark this folder as the root folder for your
+   Google Drive.
+   
+   To get the contents in `kmod_share`: 
+   
+   1. Create a subfolder `Gdrive/kmod_share/`.
+   2. `cd` to this subfolder and run `drive pull`. This will pull all contents 
+   from the remote `kmod_share` folder to your local folder.
+
+3. In `settings.ini` (in this repository), modify the value of the `share_path`
+   key to point to your local folder `Gdrive/condgan_share/`. 
+
+* Make sure to do `drive pull` often to get the latest update.
+
+* After you make changes or add files, run `drive push` under `condgan_share`
+   to push the contents to the remote folder for other collaborators to see.
+
+        
+
+
