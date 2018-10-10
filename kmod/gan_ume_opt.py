@@ -498,7 +498,6 @@ def ume_ustat_h1_mean_variance(feature_matrix, return_variance=True,
     """
     Z = feature_matrix
     n = Z.size(0)
-    J = Z.size(1)
     assert n > 1, 'Need n > 1 to compute the mean of the statistic.'
     if use_unbiased:
         # t1 = np.sum(np.mean(Z, axis=0)**2)*(n/float(n-1))
@@ -531,64 +530,97 @@ def ume_feature_matrix(X, Y, V, k):
     return Z
 
 
-def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, model, Zp0,
-                                   Zq0, gwidth0, reg=1e-3, max_iter=100,
-                                   tol_fun=1e-6, disp=False, locs_bounds_frac=100,
-                                   gwidth_lb=None, gwidth_ub=None, cuda=None):
+def ume_power_criterion(X, Y, Z, Vp, Vq, k, reg):
+    fea_pr = ume_feature_matrix(X, Z, Vp, k)  # n x Jp
+    fea_qr = ume_feature_matrix(Y, Z, Vq, k)  # n x Jq
+    umehp, var_pr = ume_ustat_h1_mean_variance(fea_pr, return_variance=True,
+                                               use_unbiased=True)
+    umehq, var_qr = ume_ustat_h1_mean_variance(fea_qr, return_variance=True,
+                                               use_unbiased=True)
 
-    def power_criterion(X, Y, Z, Vp, Vq, k, reg):
-        fea_pr = ume_feature_matrix(X, Z, Vp, k)  # n x Jp
-        fea_qr = ume_feature_matrix(Y, Z, Vq, k)  # n x Jq
-        umehp, var_pr = ume_ustat_h1_mean_variance(fea_pr, return_variance=True,
-                                                   use_unbiased=True)
-        umehq, var_qr = ume_ustat_h1_mean_variance(fea_qr, return_variance=True,
-                                                   use_unbiased=True)
+    if (var_pr <= 0).any():
+        log.l().warning('Non-positive var_pr detected. Was {}'.format(var_pr))
+    if (var_qr <= 0).any():
+        log.l().warning('Non-positive var_qr detected. War {}'.format(var_qr))
+    mean_h1 = umehp - umehq
 
-        if (var_pr <= 0).any():
-            log.l().warning('Non-positive var_pr detected. Was {}'.format(var_pr))
-        if (var_qr <= 0).any():
-            log.l().warning('Non-positive var_qr detected. War {}'.format(var_qr))
-        # assert var_pr > 0, 'var_pr was {}'.format(var_pr)
-        # assert var_qr > 0, 'var_qr was {}'.format(var_qr)
-        mean_h1 = umehp - umehq
+    # mean features
+    mean_pr = torch.mean(fea_pr, dim=0)
+    mean_qr = torch.mean(fea_qr, dim=0)
+    t1 = 4.0*torch.mean(torch.matmul(fea_pr, mean_pr)*torch.matmul(fea_qr, mean_qr))
+    t2 = 4.0*torch.sum(mean_pr**2)*torch.sum(mean_qr**2)
+
+    # compute the cross-covariance
+    var_pqr = t1 - t2
+    var_h1 = var_pr - 2.0*var_pqr + var_qr
+
+    power_criterion = mean_h1 / torch.sqrt(var_h1 + reg)
+    return power_criterion
 
 
-        # mean features
-        mean_pr = torch.mean(fea_pr, dim=0)
-        mean_qr = torch.mean(fea_qr, dim=0)
-        t1 = 4.0*torch.mean(torch.matmul(fea_pr, mean_pr)*torch.matmul(fea_qr, mean_qr))
-        t2 = 4.0*torch.sum(mean_pr**2)*torch.sum(mean_qr**2)
+def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, featurizer,
+                                   Zp0, Zq0, gwidth0, use_cuda, reg=1e-3, lam_z=1e-6,
+                                   lam_gw=1e-6, max_iter=100, gwidth_lb=None,
+                                   gwidth_ub=None, Zp_lb=None, Zp_ub=None, Zq_lb=None,
+                                   Zq_ub=None,
+                                   ):
 
-        # compute the cross-covariance
-        var_pqr = t1 - t2
-        var_h1 = var_pr - 2.0*var_pqr + var_qr
+    def reg_z(Zp, Zq):
+        eps = 0.  # 1e-10
+        log_bar_p = (torch.sum(torch.log(Zp_ub-Zp+eps)) 
+                     if Zp_ub is not None else 0)
+        log_bar_p = (log_bar_p + torch.sum(torch.log(-Zp_lb+Zp+eps))
+                     if Zp_lb is not None else log_bar_p)
+        log_bar_q = (torch.sum(torch.log(Zq_ub-Zq+eps)) 
+                     if Zq_ub is not None else 0)
+        log_bar_q = (log_bar_q + torch.sum(torch.log(-Zq_lb+Zq+eps))
+                     if Zq_lb is not None else log_bar_q)
+        return log_bar_p + log_bar_q
 
-        power_criterion = mean_h1 / torch.sqrt(var_h1 + reg)
-        return power_criterion
+    def reg_gw2(gwidth2):
+        eps = 0.  # 1e-6
+        log_bar_gwidth = (torch.log(gwidth_ub-gwidth2+eps)
+                          if gwidth_ub is not None else 0)
+        log_bar_gwidth = (log_bar_gwidth + (torch.log(-max(gwidth_lb, 0)+gwidth2+eps))
+                          if gwidth_lb is not None else log_bar_gwidth)
 
-    gwidth = to_torch_variable(gwidth0, requires_grad=True)
-    Zp = to_torch_variable(Zp0, requires_grad=True)
-    Zq = to_torch_variable(Zq0, requires_grad=True)
+        return log_bar_gwidth
 
-    X = to_torch_variable(datap.data(), requires_grad=False)
-    Y = to_torch_variable(dataq.data(), requires_grad=False)
-    Z = to_torch_variable(datar.data(), requires_grad=False)
+    device = torch.device('cuda' if use_cuda else 'cpu')
+    dtype = torch.float
 
-    optimizer = optim.LBFGS([gwidth, Zp, Zq], lr=1e-2, max_iter=max_iter)
+    gwidth2 = torch.tensor(gwidth0**2, requires_grad=True,
+            device=device)
+    k = kernel.PTKGauss(gwidth2)
+    Zp = torch.tensor(Zp0, requires_grad=True, device=device,
+            dtype=dtype)
+    Zq = torch.tensor(Zq0, requires_grad=True, device=device,
+            dtype=dtype)
+
+    X = torch.tensor(datap.data(), requires_grad=False, 
+                     device=device, dtype=dtype)
+    Y = torch.tensor(dataq.data(), requires_grad=False,
+                     device=device, dtype=dtype)
+    Z = torch.tensor(datar.data(), requires_grad=False,
+                     device=device, dtype=dtype)
+
+    # optimizer = optim.LBFGS([gwidth2, Zp, Zq], lr=1e-3, max_iter=10)
+    # optimizer = optim.SGD([gwidth2, Zp, Zq], lr=1e-4, momentum=0.9, nesterov=True)
+    optimizer = optim.Adam([k.sigma2, Zp, Zq], lr=1e-3)
     transform = nn.Upsample((model_input_size, model_input_size),
                             mode='bilinear')
 
-    k = kernel.PTKGauss(gwidth**2)
     for i in range(max_iter):
         def closure():
             optimizer.zero_grad()
             im_p = gen_p(Zp.view(-1, gen_p.z_size, 1, 1))
             im_q = gen_q(Zq.view(-1, gen_q.z_size, 1, 1))
-            Vp = model(transform(im_p))
-            Vq = model(transform(im_q))
-            obj = -power_criterion(X, Y, Z, Vp, Vq, k, reg)
+            Vp = featurizer(transform(im_p))
+            Vq = featurizer(transform(im_q))
+            power = -ume_power_criterion(X, Y, Z, Vp, Vq, k, reg)
+            obj = power - lam_z*reg_z(Zp, Zq) - lam_gw*reg_gw2(k.sigma2)
             obj.backward(retain_graph=True)
             return obj
         optimizer.step(closure)
 
-    return Zp, Zq, gwidth
+    return Zp, Zq, k.sigma2
