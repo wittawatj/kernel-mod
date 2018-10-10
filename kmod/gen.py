@@ -83,7 +83,7 @@ class PTNoiseTransformerAdapter(PTNoiseTransformer):
         f_sample_noise: a function or a callable object n |-> (n x
             in_out_shapes[0] ) to sample noise vectors.
         """
-        self.module = module
+        self.module = module.eval()
         self.f_sample_noise = f_sample_noise
         self.in_out_shapes = in_out_shapes
         self.tensor_type = tensor_type
@@ -117,10 +117,14 @@ class PTNoiseTransformerAdapter(PTNoiseTransformer):
 
         Return the n objects.
         """
-        Z = self.sample_noise(n).type(self.tensor_type)
-        Zvar = torch.autograd.Variable(Z)
-        X = self.module(Zvar)
+        with torch.no_grad():
+            Z = self.sample_noise(n).type(self.tensor_type)
+            Zvar = torch.autograd.Variable(Z)
+            X = self.module(Zvar)
         return X
+
+    def __str__(self):
+        return str(self.module)
 
 # PTNoiseTransformerAdapter
 
