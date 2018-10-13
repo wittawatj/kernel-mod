@@ -51,9 +51,9 @@ class Generator(nn.Module):
 
         return x
     
-    def load(self,save_path):
+    def load(self,save_path, **options):
         
 
-        self.load_state_dict(torch.load(save_path))
+        self.load_state_dict(torch.load(save_path, **options))
         
 
