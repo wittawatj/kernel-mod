@@ -12,6 +12,19 @@ from scipy import linalg
 from sklearn.metrics.pairwise import polynomial_kernel
 import sys
 
+import kmod.glo as glo
+import os
+import torch
+from kmod.mnist.dcgan import Generator
+from kmod.mnist.dcgan import DCGAN
+import kmod.mnist.dcgan as mnist_dcgan
+import kmod.net as net
+import kmod.gen as gen
+
+
+mnist_model_names= ['dcgan', 'began', 'wgan', 'lsgan', 'gan',]
+shared_resource_path = glo.shared_resource_folder()
+
 
 def plot_images_grid(images, func_img=None, grid_rows=4, grid_cols=4):
     """
@@ -247,3 +260,47 @@ def polynomial_mmd_averages(codes_g, codes_r, n_subsets=50, subset_size=1000, re
         else:
             mmds[i] = o
     return (mmds, vars) if ret_var else mmds
+
+
+def load_mnist_gen(model_name, epoch, tensor_type, batch_size=64, **load_options):
+    name = model_name.lower()
+    if name not in mnist_model_names:
+        raise ValueError('Model name has be one of '
+                          '{} and was'.format(key_list, name))
+    print('Loading ', name)
+    if name == 'dcgan':
+        # load a model from the shared folder
+        model_folder = glo.shared_resource_folder('prob_models', 'mnist_dcgan')
+        model_fname = 'mnist_dcgan_ep{}_bs{}.pt'.format(epoch, batch_size)
+        model_fpath = os.path.join(model_folder, model_fname)
+        print('Shared resource path at: {}'.format(shared_resource_path))
+        print('Model folder: {}'.format(model_folder))
+        print('Model file: ', model_fname)
+        # load the generator of type kmod.gen.PTNoiseTransformer
+        dcgan = net.SerializableModule.load(model_fpath, **load_options)
+        return dcgan
+    
+    elif ('gan' in name):
+        # load a model from the shared folder
+        model_folder = glo.shared_resource_folder('prob_models', 'mnist_{}'.format(name), str(epoch))
+        model_fname = '{}_G.pkl'.format(name.upper())
+        model_fpath = os.path.join(model_folder, model_fname)
+        print('Shared resource path at: {}'.format(shared_resource_path))
+        print('Model folder: {}'.format(model_folder))
+        print('Model file: ', model_fname)
+        
+        from kmod.mnist.began import Generator as Generator_
+        # load the generator of type kmod.gen.PTNoiseTransformer
+        image_size = 28
+        z_dim = 62 #dimention of noise, this is fixed. so don't change
+        g = Generator_(input_dim=z_dim,input_size=image_size)
+        in_out_shapes = (z_dim, image_size)
+        def f_sample_noise(n):
+            return torch.rand((n, z_dim))
+        g.load(model_fpath, **load_options)
+        #print(g.fc[0].weight.is_cuda)
+        gan_model = gen.PTNoiseTransformerAdapter(module=g, f_sample_noise=f_sample_noise, 
+                                          in_out_shapes=in_out_shapes, tensor_type=tensor_type)
+        return gan_model
+
+
