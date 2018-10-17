@@ -278,6 +278,8 @@ def load_mnist_gen(model_name, epoch, tensor_type, batch_size=64, **load_options
         print('Model file: ', model_fname)
         # load the generator of type kmod.gen.PTNoiseTransformer
         dcgan = net.SerializableModule.load(model_fpath, **load_options)
+        # make sure to respect the specified tensor_type
+        dcgan.tensor_type = tensor_type
         return dcgan
     
     elif ('gan' in name):
@@ -299,8 +301,9 @@ def load_mnist_gen(model_name, epoch, tensor_type, batch_size=64, **load_options
             return torch.rand((n, z_dim))
         g.load(model_fpath, **load_options)
         #print(g.fc[0].weight.is_cuda)
-        gan_model = gen.PTNoiseTransformerAdapter(module=g, f_sample_noise=f_sample_noise, 
-                                          in_out_shapes=in_out_shapes, tensor_type=tensor_type)
+        gan_model = gen.PTNoiseTransformerAdapter(module=g,
+                f_sample_noise=f_sample_noise, in_out_shapes=in_out_shapes,
+                tensor_type=tensor_type)
         return gan_model
 
 

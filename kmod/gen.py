@@ -87,6 +87,7 @@ class PTNoiseTransformerAdapter(PTNoiseTransformer):
         self.f_sample_noise = f_sample_noise
         self.in_out_shapes = in_out_shapes
         self.tensor_type = tensor_type
+        # print(self.tensor_type)
 
         # minimal compatibility check
         try:
@@ -99,7 +100,9 @@ class PTNoiseTransformerAdapter(PTNoiseTransformer):
 
     def sample_noise(self, n):
         f = self.f_sample_noise
-        return f(n)
+        sampled = f(n)
+        sampled = sampled.type(self.tensor_type)
+        return sampled
 
     def in_out_shapes(self):
         """
