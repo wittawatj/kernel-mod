@@ -43,12 +43,57 @@ class VAE(nn.Module):
 
         torch.save(self.state_dict(), os.path.join(save_dir, 'VAE.pkl'))
 
-    def forward(self, x):
-        mu, logvar = self.encode(x.view(-1, 784))
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
+    def forward(self, z):
+        return self.decode(z).view(-1, 1, 28, 28)
+        # mu, logvar = self.encode(x.view(-1, 784))
+        # z = self.reparameterize(mu, logvar)
+        # return self.decode(z), mu, logvar
 
-
+    def load(self,save_path, **options):
+        self.load_state_dict(torch.load(save_path, **options))
+     
+# class VAE(nn.Module):
+#     def __init__(self):
+#         super(VAE, self).__init__()
+# 
+#         self.fc1 = nn.Linear(784, 400)
+#         self.fc21 = nn.Linear(400, 20)
+#         self.fc22 = nn.Linear(400, 20)
+#         self.fc3 = nn.Linear(20, 400)
+#         self.fc4 = nn.Linear(400, 784)
+# 
+#     def encode(self, x):
+#         h1 = F.relu(self.fc1(x))
+#         return self.fc21(h1), self.fc22(h1)
+# 
+#     def reparameterize(self, mu, logvar):
+#         if self.training:
+#             std = torch.exp(0.5*logvar)
+#             eps = torch.randn_like(std)
+#             return eps.mul(std).add_(mu)
+#         else:
+#             return mu
+# 
+#     def decode(self, z):
+#         h3 = F.relu(self.fc3(z))
+#         return torch.sigmoid(self.fc4(h3))
+#     
+#     def save(self,epoch):
+#         save_dir = os.path.join('models','mnist', 'VAE',str(epoch))
+# 
+#         if not os.path.exists(save_dir):
+#             os.makedirs(save_dir)
+# 
+#         torch.save(self.state_dict(), os.path.join(save_dir, 'VAE.pkl'))
+# 
+#     def forward(self, z):
+#         mu, logvar = self.encode(x.view(-1, 784))
+#         z = self.reparameterize(mu, logvar)
+#         return self.decode(z), mu, logvar
+# 
+#     def load(self,save_path, **options):
+#         self.load_state_dict(torch.load(save_path, **options))
+ 
 # model = VAE().to(device)
 # optimizer = optim.Adam(model.parameters(), lr=1e-2)
 
