@@ -28,6 +28,6 @@ script:
 notifications:
     email:
         recipients:
-            - wittawatj@gmail.com 
-        on_success: change 
+            - wittawatj@gmail.com
+        on_success: change
         on_failure: change
