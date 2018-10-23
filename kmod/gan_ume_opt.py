@@ -470,6 +470,7 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, locs,
                     best_idx = k
             best_loc_idx.append(best_idx)
             current_pool_idx_set.remove(best_idx)
+            # print(best_loc_idx)
         return best_loc_idx
 
     return greedy_search(J, fV)

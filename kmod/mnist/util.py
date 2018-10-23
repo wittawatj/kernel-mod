@@ -43,14 +43,15 @@ def show_sorted_digits(imgs, digit_mapper, n_per_row=10, figsize=(8,8),
 
     list_row_imgs = []
     for y in UY:
-        Iy = torch.nonzero(Y==y).view(-1)
-        # print(Iy)
-        len_Iy = len(Iy)
-        if len_Iy < n_per_row:
-            # not enough geneated images for the digit y
-            raise ValueError('Only {} images available for digit {}. But you want to show n_per_row = {} images.'.format(len_Iy, y, n_per_row))
-        imgs_y = imgs[Iy[:n_per_row]]
-        list_row_imgs.append(imgs_y)
+        if not digits or y in digits:
+            Iy = torch.nonzero(Y==y).view(-1)
+            # print(Iy)
+            len_Iy = len(Iy)
+            if len_Iy < n_per_row:
+                # not enough geneated images for the digit y
+                raise ValueError('Only {} images available for digit {}. But you want to show n_per_row = {} images.'.format(len_Iy, y, n_per_row))
+            imgs_y = imgs[Iy[:n_per_row]]
+            list_row_imgs.append(imgs_y)
 
     stack_imgs = torch.cat(list_row_imgs, dim=0)
     # show the images
