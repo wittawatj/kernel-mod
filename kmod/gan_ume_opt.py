@@ -402,9 +402,9 @@ def extract_feats(X, model, upsample=False):
     return feat_X
 
 
-def opt_greedy_3sample_criterion(datap, dataq, datar, model, locs,
-                                 gwidth, J, reg=1e-3, maximize=True,
-                                 extract_feature=True):
+def opt_greedy_3sample_criterion(datap, dataq, datar, locs,
+                                 k, J, reg=1e-3, maximize=True,
+                                 featurizer=None):
     """
     Obtains a set of J test locations by maximizing (or minimizing)
     the power criterion of the UME three-sample test.
@@ -417,11 +417,12 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, model, locs,
         - datar: a kgof.data.Data from R (data generating distribution)
         - model: a torch model used for feature extraction
         - locs: an n_c x d numpy array representing a set of n_c candidate locations
-        - gwidth: the Gaussian width^2 for both UME(P, R) and UME(Q, R)
+        - k: a kernel object
+        - J: the number of test locations
         - reg: reg to add to the mean/sqrt(variance) criterion to become
             mean/sqrt(variance + reg)
         - maximize: if True, maximize the power criterion, otherwise minimize
-        - extract_feature: if True, the data is tranformed by the given feature
+        - featurizer: if given, the data is tranformed by the given feature
           extractor model
 
     Returns:
@@ -429,22 +430,21 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, model, locs,
     """
 
     # transform inputs to power criterion with feature extractor
-    if extract_feature:
-        dp = extract_feats(datap.data(), model)
-        dp = data.Data(dp)
-        dq = extract_feats(dataq.data(), model)
-        dq = data.Data(dq)
-        dr = extract_feats(datar.data(), model)
-        dr = data.Data(dr)
-        fV = extract_feats(locs, model)
-    else:
+    if featurizer is None:
         dp = datap
         dq = dataq
         dr = datar
         fV = locs
+    else:
+        dp = featurizer(datap.data()).cpu().data.numpy()
+        dp = data.Data(dp)
+        dq = featurizer(dataq.data()).cpu().data.numpy()
+        dq = data.Data(dq)
+        dr = featurizer(datar.data()).cpu().data.numpy()
+        dr = data.Data(dr)
+        fV = featurizer(locs).cpu().data.numpy()
 
     def obj(V):
-        k = kernel.KGauss(gwidth)
         if len(V.shape) < 2:
             V = V.reshape((-1,) + V.shape)
         if maximize:
