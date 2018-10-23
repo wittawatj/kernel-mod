@@ -426,7 +426,7 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, locs,
           extractor model
 
     Returns:
-        A set of indices representing obtinaed locations
+        A set of indices representing obtained locations
     """
 
     # transform inputs to power criterion with feature extractor
@@ -457,26 +457,19 @@ def opt_greedy_3sample_criterion(datap, dataq, datar, locs,
     def greedy_search(num_locs, loc_pool):
         best_loc_idx = []
         n = loc_pool.shape[0]
+        current_pool_idx_set = set(range(n))
         for _ in range(num_locs):
-            is_empty = (len(best_loc_idx) == 0)
-            if not is_empty:
-                best_locs = np.vstack(loc_pool[best_loc_idx])
-            max_val = None
-            for k in range(n):
-                if k not in best_loc_idx:
-                    if is_empty:
-                        V = loc_pool[k].reshape((1, -1))
-                    else:
-                        V = np.vstack([loc_pool[k], best_locs])
-                    score = obj(V)
-                    if max_val is None:
-                        max_val = score
-                        best_idx = k
-                    else:
-                        if score > max_val:
-                            max_val = score
-                            best_idx = k
+            best_locs = loc_pool[best_loc_idx]
+            max_val = -np.inf
+            for k in current_pool_idx_set:
+                V = np.vstack([loc_pool[[k]], best_locs])
+                # evaluate the power criterion (score)
+                score = obj(V)
+                if score > max_val:
+                    max_val = score
+                    best_idx = k
             best_loc_idx.append(best_idx)
+            current_pool_idx_set.remove(best_idx)
         return best_loc_idx
 
     return greedy_search(J, fV)
