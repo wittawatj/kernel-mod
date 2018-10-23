@@ -26,7 +26,7 @@ def pt_sample_by_labels(data, label_counts):
     return selected
 
 def show_sorted_digits(imgs, digit_mapper, n_per_row=10, figsize=(8,8),
-        digits=[], n_max_sample=None, normalize=True):
+        digits=[], normalize=True):
     """
     Show sorted generated Mnist digits.
 
@@ -37,11 +37,7 @@ def show_sorted_digits(imgs, digit_mapper, n_per_row=10, figsize=(8,8),
         list of digit identities as integers. This is likely a classifier.
     digits: digits (a list) to show. If not set, show all digits of 0-9.
     n_per_row: number of generated digits to show per row
-    n_max_sample: total number of samples to generate from sampler.
     """
-    if n_max_sample is None:
-        n_max_sample = max(500, n_per_row*10*len(digits))
-
     Y = digit_mapper(imgs)
     UY = torch.unique(Y)
 

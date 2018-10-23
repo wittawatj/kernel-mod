@@ -292,7 +292,7 @@ def get_density_cmap():
     return lscm
 
 
-def show_torch_imgs(imgs, nrow=8, figsize=(8, 5), axis_off=True, **opt):
+def show_torch_imgs(imgs, nrow=8, figsize=(8, 5), axis_off=True , **opt):
     """
     A convenient function to show a stack of images (Pytorch tensors).
     """
@@ -308,9 +308,11 @@ def show_torch_imgs(imgs, nrow=8, figsize=(8, 5), axis_off=True, **opt):
     # https://gist.github.com/anonymous/bf16430f7750c023141c562f3e9f2a91
     img = torchvision.utils.make_grid(imgs, nrow=nrow, **opt)
     npimg = img.cpu().numpy()
+    # make it height x width x channels
+    npimg = np.transpose(npimg, (1, 2, 0))
 
     plt.figure(figsize=figsize)
-    plt.imshow(np.transpose(npimg, (1, 2, 0)), interpolation='nearest')
+    plt.imshow(npimg, interpolation='nearest')
     if axis_off:
         plt.axis('off')
         
