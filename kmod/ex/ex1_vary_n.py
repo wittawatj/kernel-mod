@@ -640,7 +640,7 @@ def get_ns_pqrsource(prob_label):
 
         'gmm_blobs_d2': 
             # list of sample sizes
-            ([300, 900, 1500, 2100, 2700], ) + make_gmm_blobs_d2(),
+            ([300, 900, 1500, 2100, 2700, 3300], ) + make_gmm_blobs_d2(),
 
         'gmm_blobs_d2_dfac4': 
             # list of sample sizes
