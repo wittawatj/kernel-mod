@@ -7,9 +7,7 @@ from kmod import util, data, kernel
 from kmod.mctest import SC_MMD
 from kmod.mctest import SC_GaussUME
 import kmod.glo as glo
-from kmod.ex import celeba as clba
-from kmod.ex import cifar10 as cf10
-from kmod.ex import lsun
+from kmod.ex import exdata
 from collections import defaultdict
 from sympy import Rational
 from sympy import sympify
@@ -33,6 +31,7 @@ All the method functions take the following mandatory inputs:
     mix_ratios[0:2] is for X, Y, Z, which are samples for P, Q, R,
     and mix_ratios[3] is for test locations V. All the ratios are
     specified by sympy Rationals
+    - data_loader: a exdata.DataLoader object used for loading data
     - n: total sample size. Each method function should draw exactly the number
           of points using the method sample_data_mixing and mix_ratios
     - r: repetition (trial) index. Drawing samples should make use of r to
@@ -42,7 +41,7 @@ All the method functions take the following mandatory inputs:
 """
 
 
-def met_fid(mix_ratios, n, r):
+def met_fid(mix_ratios, data_loader, n, r):
     """
     Compute the FIDs FID(P, R) and FIR(Q, R).
     The bootstrap estimator from Binkowski et al. 2018 is used.
@@ -51,7 +50,7 @@ def met_fid(mix_ratios, n, r):
     met_fid_nbstrp.
     """
     sample_size = [n] * 3
-    X, Y, Z, _ = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, _ = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
 
     # keeping it the same as the comparison in MMD gan paper, 10 boostrap resamplings
     splits = 10
@@ -74,14 +73,14 @@ def met_fid(mix_ratios, n, r):
     return result
 
 
-def met_fid_nbstrp(mix_ratios, n, r):
+def met_fid_nbstrp(mix_ratios, data_loader, n, r):
     """
     Compute the FIDs FID(P, R) and FIR(Q, R).
     Unlike met_fid, the estimator is constructed by plugging the sample means and
     the sample covariances into the definition of FID.
     """
     sample_size = [n] * 3
-    X, Y, Z, _ = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, _ = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
 
     # keeping it the same as the comparison in MMD gan paper, 10 boostrap resamplings
     splits = 1
@@ -104,37 +103,37 @@ def met_fid_nbstrp(mix_ratios, n, r):
     return result
 
 
-def met_fid_perm(mix_ratios, n, r):
+def met_fid_perm(mix_ratios, data_loader, n, r):
     """
     FID permutation test.
     """
     sample_size = [n] * 3
-    X, Y, Z, _ = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, _ = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
 
     test_result = fid_permutation_test(X, Y, Z, alpha=alpha, n_permute=50)
     return test_result
 
 
-def met_kid_mmd(mix_ratios, n, r):
+def met_kid_mmd(mix_ratios, data_loader, n, r):
     """
     Bounliphone et al., 2016's MMD-based 3-sample test with the KID kernel
     in Binkowski et al., 2018.
     """
 
     sample_size = [n] * 3
-    X, Y, Z, _ = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, _ = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
 
     k = kernel.KKID()
     scmmd = SC_MMD(data.Data(X), data.Data(Y), k, alpha)
     return scmmd.perform_test(data.Data(Z))
 
 
-def met_kid(mix_ratios, n, r):
+def met_kid(mix_ratios, data_loader, n, r):
     """
     Compute MMD with the KID kernel. Note that this is not a test.
     """
     sample_size = [n] * 3
-    X, Y, Z, _ = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, _ = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
 
     n_set = 100
     sub_size = 1000
@@ -163,7 +162,7 @@ def met_kid(mix_ratios, n, r):
     return result
 
 
-def met_gume_J_1_v_smile_celeba(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_smile_celeba(mix_ratios, data_loader, n, r, J=1):
     """
     UME-based three-sample test for celebA problems
     with test locations being smiling images.
@@ -172,28 +171,28 @@ def met_gume_J_1_v_smile_celeba(mix_ratios, n, r, J=1):
 
     sample_size = [n] * 3 + [J]
     mix_ratios.append({'ref_smile': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_5_v_smile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_smile_celeba(mix_ratios, n, r, J=5)
+def met_gume_J_5_v_smile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_smile_celeba(mix_ratios, data_loader, n, r, J=5)
 
 
-def met_gume_J_10_v_smile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_smile_celeba(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_smile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_smile_celeba(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_20_v_smile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_smile_celeba(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_smile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_smile_celeba(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_smile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_smile_celeba(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_smile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_smile_celeba(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=1):
     """
     UME-based three-sample test for celebA problems
     with test locations nonbeing smiling images.
@@ -203,28 +202,28 @@ def met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'ref_nonsmile': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_5_v_nonsmile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=5)
+def met_gume_J_5_v_nonsmile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=5)
 
 
-def met_gume_J_10_v_nonsmile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_nonsmile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_20_v_nonsmile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_nonsmile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_nonsmile_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_nonsmile_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gume_J_2_v_mix_celeba(mix_ratios, n, r, J=2):
+def met_gume_J_2_v_mix_celeba(mix_ratios, data_loader, n, r, J=2):
     """
     UME-based three-sample test for celebA problems
     with test locations being a mixture of smiling/nonsmiling
@@ -234,24 +233,24 @@ def met_gume_J_2_v_mix_celeba(mix_ratios, n, r, J=2):
 
     sample_size = [n] * 3 + [J]
     mix_ratios.append({'ref_smile': sympify(0.5), 'ref_nonsmile': sympify(0.5)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_10_v_mix_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_mix_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_20_v_mix_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_mix_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_mix_celeba(mix_ratios, n, r):
-    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_mix_celeba(mix_ratios, data_loader, n, r):
+    return met_gume_J_1_v_nonsmile_celeba(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gmmd_med(mix_ratios, n, r):
+def met_gmmd_med(mix_ratios, data_loader, n, r):
     """
     Bounliphone et al., 2016's MMD-based 3-sample test.
     * Gaussian kernel.
@@ -260,134 +259,134 @@ def met_gmmd_med(mix_ratios, n, r):
     """
 
     sample_size = [n] * 3
-    X, Y, Z, _ = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, _ = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_MMD.mmd_test(X, Y, Z, alpha=alpha)
     return test_result
 
 
-def met_gume_J_1_v_dog_ci10(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_dog_ci10(mix_ratios, data_loader, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'dog': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_5_v_dog_ci10(mix_ratios, n, r, J=5):
-    return met_gume_J_1_v_dog_ci10(mix_ratios, n, r, J=5)
+def met_gume_J_5_v_dog_ci10(mix_ratios, data_loader, n, r, J=5):
+    return met_gume_J_1_v_dog_ci10(mix_ratios, data_loader, n, r, J=5)
 
 
-def met_gume_J_10_v_dog_ci10(mix_ratios, n, r, J=5):
-    return met_gume_J_1_v_dog_ci10(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_dog_ci10(mix_ratios, data_loader, n, r, J=5):
+    return met_gume_J_1_v_dog_ci10(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_1_v_deer_ci10(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_deer_ci10(mix_ratios, data_loader, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'deer': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_5_v_deer_ci10(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_deer_ci10(mix_ratios, n, r, J=5)
+def met_gume_J_5_v_deer_ci10(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_deer_ci10(mix_ratios, data_loader, n, r, J=5)
 
 
-def met_gume_J_10_v_deer_ci10(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_deer_ci10(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_deer_ci10(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_deer_ci10(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_1_v_horse_ci10(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_horse_ci10(mix_ratios, data_loader, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'horse': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_5_v_horse_ci10(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_horse_ci10(mix_ratios, n, r, J=5)
+def met_gume_J_5_v_horse_ci10(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_horse_ci10(mix_ratios, data_loader, n, r, J=5)
 
 
-def met_gume_J_10_v_horse_ci10(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_horse_ci10(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_horse_ci10(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_horse_ci10(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_rest_lsun(mix_ratios, data_loader, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'restaurant': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_10_v_rest_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_rest_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_rest_lsun(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_20_v_rest_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_rest_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_rest_lsun(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_rest_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_rest_lsun(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_rest_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_rest_lsun(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_conf_lsun(mix_ratios, data_loader, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'confroom': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_10_v_conf_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_conf_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_20_v_conf_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_conf_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_conf_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_conf_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gume_J_120_v_conf_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_conf_lsun(mix_ratios, n, r, J=120)
+def met_gume_J_120_v_conf_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_conf_lsun(mix_ratios, data_loader, n, r, J=120)
 
 
-def met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=1):
+def met_gume_J_1_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=1):
     sample_size = [n] * 3 + [J]
 
     mix_ratios.append({'kitchen': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_10_v_kitchen_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=10)
+def met_gume_J_10_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=10)
 
 
-def met_gume_J_20_v_kitchen_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_kitchen_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gume_J_120_v_kitchen_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_kitchen_lsun(mix_ratios, n, r, J=120)
+def met_gume_J_120_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=1):
+    return met_gume_J_1_v_kitchen_lsun(mix_ratios, data_loader, n, r, J=120)
 
 
-def met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=4):
+def met_gume_J_4_v_mix_lsun(mix_ratios, data_loader, n, r, J=4):
     """
     UME-based three-sample test for LSUN problems
     with test locations being a mixture of kitchen/restaurant/confroom/bedroom
@@ -400,56 +399,35 @@ def met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=4):
                        'confroom': Rational(1, 4), 'bedroom': Rational(1, 4),
                        }
                       )
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
+    X, Y, Z, V = sample_data_mixing(mix_ratios, data_loader, sample_size, r)
     test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
     return test_result
 
 
-def met_gume_J_20_v_mix_lsun(mix_ratios, n, r, J=4):
-    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=20)
+def met_gume_J_20_v_mix_lsun(mix_ratios, data_loader, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, data_loader, n, r, J=20)
 
 
-def met_gume_J_40_v_mix_lsun(mix_ratios, n, r, J=4):
-    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=40)
+def met_gume_J_40_v_mix_lsun(mix_ratios, data_loader, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, data_loader, n, r, J=40)
 
 
-def met_gume_J_120_v_mix_lsun(mix_ratios, n, r, J=4):
-    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=120)
+def met_gume_J_120_v_mix_lsun(mix_ratios, data_loader, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, data_loader, n, r, J=120)
 
 
-def met_gume_J_160_v_mix_lsun(mix_ratios, n, r, J=4):
-    return met_gume_J_4_v_mix_lsun(mix_ratios, n, r, J=160)
+def met_gume_J_160_v_mix_lsun(mix_ratios, data_loader, n, r, J=4):
+    return met_gume_J_4_v_mix_lsun(mix_ratios, data_loader, n, r, J=160)
 
 
-def met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=1):
-    sample_size = [n] * 3 + [J]
-
-    mix_ratios.append({'3212_dcgan_20': sympify(1.0)})
-    X, Y, Z, V = sample_data_mixing(mix_ratios, prob_module, sample_size, r)
-    test_result = SC_GaussUME.ume_test(X, Y, Z, V, alpha=alpha)
-    return test_result
-
-
-def met_gume_J_10_v_3212e20_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=10)
-
-
-def met_gume_J_40_v_3212e20_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=40)
-
-
-def met_gume_J_120_v_3212e20_lsun(mix_ratios, n, r, J=1):
-    return met_gume_J_1_v_3212e20_lsun(mix_ratios, n, r, J=120)
-
-
-
-def sample_feat_array(class_spec, prob_module, seed=37):
+def sample_feat_array(class_spec, data_loader, seed=37):
     """
-    Return a split of data in prob_module specified by class_spec.
+    Return a split of data in data_loader specified by class_spec.
     Args:
         - class_spec: a tuple of
         ('class_name', #sample for X, #sample for Y, #sample for Z,
         #sample for V) specifying a split of the data of 'class_name'.
+        - data_loader: exdata.DataLoader object 
 
     Returns:
         -(X, Y, Z, V): numpy arrays representing 3 sampels and test locations.
@@ -467,7 +445,7 @@ def sample_feat_array(class_spec, prob_module, seed=37):
                 raise ValueError(err_msg)
             # load class data
             class_i = cs[0]
-            feas_i = prob_module.load_feature_array(class_i, feature_folder=feature_folder)
+            feas_i = data_loader.load_feature_array(class_i, feature_folder=feature_folder)
 
             # split each class according to the spec
             class_sizes_i = cs[1:]
@@ -506,7 +484,7 @@ def sample_feat_array(class_spec, prob_module, seed=37):
     return X, Y, Z, V
 
 
-def sample_data_mixing(mix_ratios, prob_module, sample_size, r):
+def sample_data_mixing(mix_ratios, data_loader, sample_size, r):
     """
     Generate three samples from the mixture ratios given a trial
     index r.
@@ -514,7 +492,7 @@ def sample_data_mixing(mix_ratios, prob_module, sample_size, r):
     Args:
         - mix_ratios: a list mixture ratios of classes of a given problem.
         It must be of length 3 or 4. 
-        - prob_module: the module name for the problem
+        - data_loader: DataLoader for the problem
         - sample_size: a list of sample sizes for three sampels and test
         locations
         - r: trial index
@@ -523,7 +501,7 @@ def sample_data_mixing(mix_ratios, prob_module, sample_size, r):
         If mix_ratios does not have the ratio for test locations, V would be
         an empty array.
     """
-    classes = prob_module.get_classes()
+    classes = data_loader.classes
     class_spec_dict = defaultdict(list)
     for i, mix_ratio in enumerate(mix_ratios):
         for key in mix_ratio.keys():
@@ -546,7 +524,7 @@ def sample_data_mixing(mix_ratios, prob_module, sample_size, r):
             name_spec_tuple = (class_name, ) + tuple(spec)
             class_spec.append(name_spec_tuple)
     seed = r + sample_size[0]
-    return sample_feat_array(class_spec, prob_module, seed=seed)
+    return sample_feat_array(class_spec, data_loader, seed=seed)
 
 
 def get_ns_pm_mixing_ratios(prob_label):
@@ -564,52 +542,52 @@ def get_ns_pm_mixing_ratios(prob_label):
     sp = sympify
     prob2tuples = {
         'clba_p_gs_q_gn_r_rs': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'gen_smile': sp(1.0)}, {'gen_nonsmile': sp(1.0)},
              {'ref_smile': sp(1.0)}]
         ),
         'clba_p_gs_q_gn_r_rn': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'gen_smile': sp(1.0)}, {'gen_nonsmile': sp(1.0)},
              {'ref_nonsmile': sp(1.0)}]
         ),
         'clba_p_gs_q_gn_r_rm': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'gen_smile': sp(1.0)}, {'gen_nonsmile': sp(1.0)},
              {'ref_smile': sp(0.5), 'ref_nonsmile': sp(0.5)}]
         ),
         'clba_p_gs_q_gs_r_rn': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'gen_smile': sp(1.0)}, {'gen_smile': sp(1.0)},
              {'ref_nonsmile': sp(1.0)}]
         ),
         'clba_p_rs_q_rn_r_rm': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'ref_smile': sp(1.0)}, {'ref_nonsmile': sp(1.0)},
              {'ref_smile': sp(0.5), 'ref_nonsmile': sp(0.5)}]
         ),
         'clba_p_rs_q_rn_r_rum': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'ref_smile': sp(1.0)}, {'ref_nonsmile': sp(1.0)},
              {'ref_smile': sp(0.3), 'ref_nonsmile': sp(0.7)}]
         ),
         'clba_p_rs_q_rs_r_rs': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'ref_smile': sp(1.0)}, {'ref_smile': sp(1.0)},
              {'ref_smile': sp(1.0)}]
         ),
         'clba_p_rs_q_rn_r_rn': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'ref_smile': sp(1.0)}, {'ref_nonsmile': sp(1.0)},
              {'ref_nonsmile': sp(1.0)}]
         ),
         'clba_p_gs_q_gs_r_rs': (
-            [2000], clba,
+            [2000], 'celeba',
             [{'gen_smile': sp(1.0)}, {'gen_smile': sp(1.0)},
              {'ref_smile': sp(1.0)}]
         ),
         'cf10_p_hd_q_dd_r_ad': (
-            [3500], cf10,
+            [3500], 'cifar10',
             [
                 {'horse': Rational(2000, 3500), 'dog': Rational(1500, 3500)},
                 {'deer': Rational(2000, 3500), 'dog': Rational(1500, 3500)},
@@ -618,37 +596,37 @@ def get_ns_pm_mixing_ratios(prob_label):
             ]
         ),
         'lsun_p_3212b_q_1232b_r_1313': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'3212_began': sp(1.0)}, {'1232_began': sp(1.0)},
              {'kitchen': Rational(1, 8), 'restaurant': Rational(3, 8),
               'confroom': Rational(1, 8), 'bedroom': Rational(3, 8)},
              ]
         ),
         'lsun_p_3212b_q_1232b_r_1232': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'3212_began': sp(1.0)}, {'1232_began': sp(1.0)},
              {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
              ]
         ),
         'lsun_p_3212d_q_1232d_r_1313': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'3212_dcgan': sp(1.0)}, {'1232_dcgan': sp(1.0)},
              {'kitchen': Rational(1, 8), 'restaurant': Rational(3, 8),
               'confroom': Rational(1, 8), 'bedroom': Rational(3, 8)},
              ]
         ),
         'lsun_p_3212d_q_1232d_r_1232': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'3212_dcgan': sp(1.0)}, {'1232_dcgan': sp(1.0)},
              {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
              ]
         ),
         'lsun_p_3212_q_1232_r_1313': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
-              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)}, 
              {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
              {'kitchen': Rational(1, 8), 'restaurant': Rational(3, 8),
@@ -656,9 +634,9 @@ def get_ns_pm_mixing_ratios(prob_label):
              ]
         ),
         'lsun_p_3212_q_1232_r_1232': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
-              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)}, 
              {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
              {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
@@ -666,30 +644,23 @@ def get_ns_pm_mixing_ratios(prob_label):
              ]
         ),
         'lsun_p_3212_q_1232_r_3212': (
-            [2000], lsun,
+            [2000], 'lsun',
             [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
-              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)}, 
              {'kitchen': Rational(1, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(3, 8), 'bedroom': Rational(2, 8)},
              {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
              ]
         ),
-         'lsun_p_3212_q_3212_r_3212': (
-            [2000], lsun,
+        'lsun_p_3212_q_3212_r_3212': (
+            [2000], 'lsun',
             [{'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
-              'confroom':Rational(1, 8), 'bedroom': Rational(2, 8)}, 
-             {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
              {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
               'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
-             ]
-        ),
-        'lsun_p_e1_q_e10_r_e20': (
-            [2000], lsun,
-            [{'3212_dcgan_1': sp(1.0)},
-             {'3212_dcgan_10': sp(1.0)},
-             {'3212_dcgan_20': sp(1.0)},
+             {'kitchen': Rational(3, 8), 'restaurant': Rational(2, 8),
+              'confroom': Rational(1, 8), 'bedroom': Rational(2, 8)},
              ]
         ),
     }
@@ -704,15 +675,16 @@ def get_ns_pm_mixing_ratios(prob_label):
 # Define our custom Job, which inherits from base class IndependentJob
 class Ex3Job(IndependentJob):
 
-    def __init__(self, aggregator, mix_ratios, prob_label, rep, met_func, n):
+    def __init__(self, aggregator, mix_ratios, data_loader, prob_label, rep, met_func, n):
         walltime = 60*59*24
-        #walltime = 60 * 59
+        # walltime = 60 * 59
         memory = int(n*1e-2) + 50
 
         IndependentJob.__init__(self, aggregator, walltime=walltime,
                                 memory=memory)
         # P, P are kmod.model.Model
         self.mix_ratios = mix_ratios
+        self.data_loader = data_loader
         self.prob_label = prob_label
         self.rep = rep
         self.met_func = met_func
@@ -726,12 +698,13 @@ class Ex3Job(IndependentJob):
         r = self.rep
         n = self.n
         met_func = self.met_func
+        data_loader = self.data_loader
         prob_label = self.prob_label
 
         logger.info("computing. %s. prob=%s, r=%d,\
                 n=%d" % (met_func.__name__, prob_label, r, n))
         with util.ContextTimer() as t:
-            job_result = met_func(mix_ratios, n, r)
+            job_result = met_func(mix_ratios, data_loader, n, r)
 
             # create ScalarResult instance
             result = SingleResult(job_result)
@@ -797,10 +770,6 @@ from kmod.ex.ex3_real_images import met_gume_J_20_v_mix_lsun
 from kmod.ex.ex3_real_images import met_gume_J_40_v_mix_lsun
 from kmod.ex.ex3_real_images import met_gume_J_120_v_mix_lsun
 from kmod.ex.ex3_real_images import met_gume_J_160_v_mix_lsun
-from kmod.ex.ex3_real_images import met_gume_J_1_v_3212e20_lsun
-from kmod.ex.ex3_real_images import met_gume_J_10_v_3212e20_lsun
-from kmod.ex.ex3_real_images import met_gume_J_40_v_3212e20_lsun
-from kmod.ex.ex3_real_images import met_gume_J_120_v_3212e20_lsun
 
 
 # --- experimental setting -----
@@ -831,13 +800,13 @@ method_funcs = [
     met_kid_mmd,
     # met_fid_perm,
     # met_fid_nbstrp,
-    #met_gume_J_10_v_mix_celeba,
-    #met_gume_J_20_v_mix_celeba,
-    #met_gume_J_40_v_mix_celeba,
+    met_gume_J_10_v_mix_celeba,
+    met_gume_J_20_v_mix_celeba,
+    met_gume_J_40_v_mix_celeba,
     #met_gume_J_20_v_mix_lsun,
     #met_gume_J_40_v_mix_lsun,
-    #met_gume_J_120_v_mix_lsun,
-    #met_gume_J_160_v_mix_lsun,
+    # met_gume_J_120_v_mix_lsun,
+    # met_gume_J_160_v_mix_lsun,
     #met_gume_J_10_v_conf_lsun,
     #met_gume_J_20_v_conf_lsun,
     #met_gume_J_40_v_conf_lsun,
@@ -846,13 +815,12 @@ method_funcs = [
     #met_gume_J_20_v_kitchen_lsun,
     #met_gume_J_40_v_kitchen_lsun,
     #met_gume_J_120_v_kitchen_lsun,
-    met_gume_J_10_v_3212e20_lsun,
-    met_gume_J_40_v_3212e20_lsun,
-    met_gume_J_120_v_3212e20_lsun,
+    # met_gume_J_10_v_3212e20_lsun,
+    # met_gume_J_40_v_3212e20_lsun,
+    # met_gume_J_120_v_3212e20_lsun,
 ]
 
-prob_module = lsun
-feature_folder = 'alexnet_features'
+feature_folder = 'inception_features'
 # If is_rerun==False, do not rerun the experiment if a result file for the current
 # setting already exists.
 is_rerun = False
@@ -886,8 +854,8 @@ def run_problem(prob_label):
     n_methods = len(method_funcs)
 
     # problem setting
-    ns, pm, mix_ratios = get_ns_pm_mixing_ratios(prob_label)
-
+    ns, dataname, mix_ratios = get_ns_pm_mixing_ratios(prob_label)
+    data_loader = exdata.DataLoader(dataname)
 
     # repetitions x len(ns) x #methods
     aggregators = np.empty((reps, len(ns), n_methods), dtype=object)
@@ -908,7 +876,7 @@ def run_problem(prob_label):
                     aggregators[r, ni, mi] = sra
                 else:
                     # result not exists or rerun
-                    job = Ex3Job(SingleResultAggregator(), mix_ratios, prob_label,
+                    job = Ex3Job(SingleResultAggregator(), mix_ratios, data_loader, prob_label,
                                  r, f, n)
 
                     agg = engine.submit_job(job)
