@@ -4,7 +4,7 @@ Code for running experiments on the CelebA, CIFAR10,LSUN data.
 
 By default, assume the following directory structure:
 
-kmod/problems/cifar10/
+shared_resource_folder/problems/celeba/
 ├── data
 │   ├── gen_smile.npy
 │   ├── gen_nonsmile.npy
@@ -17,7 +17,7 @@ kmod/problems/cifar10/
 │   └── ref_nonsmile.npy
 
 
-kmod/problems/cifar10/
+shared_resource_folder/problems/cifar10/
 ├── data
 │   ├── airplane.npy
 │   ├── automobile.npy
@@ -44,8 +44,7 @@ kmod/problems/cifar10/
 
 
 
-
-kmod/problems/lsun/
+shared_resource_folder/problems/lsun/
 ├── data
 │   ├── kitchen.npy
 │   ├── restaurant.npy
@@ -103,7 +102,7 @@ class DataLoader(object):
 
     @property
     def data_folder(self):
-        return glo.problems_file(self.dataname)
+        return glo.shared_resource_folder('problems', self.dataname)
 
     def data_path(self, *relative_path):
         """
