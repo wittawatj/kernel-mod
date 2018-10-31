@@ -69,18 +69,40 @@ shared_resource_folder/problems/lsun/
 from kmod import util, glo, log
 import autograd.numpy as np
 import os
+import urllib
 
 
 class DataLoader(object):
 
     problem_list = ['cifar10', 'lsun', 'celeba', ]
+    data_url = 'http://ftp.tuebingen.mpg.de/pub/is/wittawat/kmod_share/'
 
-    def __init__(self, dataname):
+    def __init__(self, dataname, feature_folder='inception_features'):
         if dataname not in self.problem_list:
             raise ValueError(('The dataset name should be one of {}.'
-                              'Was {}').format(self.problem_list, dataname)
-                             )
+                              'Was {}').format(self.problem_list, dataname))
         self.dataname = dataname
+        self.feature_folder = feature_folder
+        self._download_data('data')
+        self._download_data(feature_folder)
+
+    def _download_data(self, feature_folder):
+        for class_name in self.classes:
+            filename = '{}.npy'.format(class_name)
+            npy_path = self.data_path(feature_folder, filename)
+            try:
+                if not os.path.exists(npy_path):
+                    dir_path = self.data_path(feature_folder)
+                    os.makedirs(dir_path, exist_ok=True)
+
+                    relative_path = ['problems', self.dataname,
+                                     feature_folder, filename]
+                    url = os.path.join(self.data_url, *relative_path)
+                    log.l().info('Downloading {}'.format(url))
+                    util.download_to(url, npy_path)
+                    log.l().info('Saved to {}'.format(npy_path))
+            except urllib.error.HTTPError:
+                log.l().warning('File does not exist in the server')
 
     @property
     def classes(self):
@@ -88,9 +110,7 @@ class DataLoader(object):
         cifar10_classes = ['airplane', 'automobile', 'bird', 'cat', 'deer',
                            'dog', 'frog', 'horse', 'ship', 'truck']
         lsun_classes = ['kitchen', 'restaurant', 'confroom', 'bedroom',
-                        '3212_began', '1232_began', '3212_dcgan', '1232_dcgan',
-                        '3212_dcgan_3',
-                        ]
+                        '3212_began', '1232_began', '3212_dcgan', '1232_dcgan', ]
         class_lists = {'celeba': celeba_classes, 'cifar10': cifar10_classes,
                        'lsun': lsun_classes}
 
@@ -114,16 +134,21 @@ class DataLoader(object):
         """
         class_name can be airplane, automobile, ....
         """
-        npy_path = self.data_path('data', '{}.npy'.format(class_name))
+        filename = '{}.npy'.format(class_name)
+        npy_path = self.data_path('data', filename)
         array = np.load(npy_path)
         return array
 
-    def load_feature_array(self, class_name, feature_folder='inception_features'):
+    def load_feature_array(self, class_name, feature_folder=None):
         """
         class_name can be airplane, automobile, ... or wholedata.
         """
-        npy_path = self.data_path(feature_folder, '{}.npy'.format(class_name))
+        if feature_folder is None:
+            feature_folder = self.feature_folder
+        filename = '{}.npy'.format(class_name)
+        npy_path = self.data_path(feature_folder, filename)
         array = np.load(npy_path)
+
         return array
 
     def load_stack(self, class_data_loader, classes=None, seed=28, max_class_size=None):

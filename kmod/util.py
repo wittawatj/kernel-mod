@@ -2,6 +2,7 @@
 from kgof.util import *
 import autograd.numpy as np
 
+
 def multi_way_split(arr, sizes):
     """
     Split rows of numpy array arr into len(sizes) partitions,
@@ -22,6 +23,7 @@ def multi_way_split(arr, sizes):
     assert len(splits) == len(sizes)
     return splits
 
+
 def top_lowzerohigh(values, k=None):
     """
     * values: a 1-dim numpy array
@@ -39,3 +41,18 @@ def top_lowzerohigh(values, k=None):
     C = A[-1:-(k+1):-1]
     B = np.argsort(np.abs(values))
     return A[:k], B[:k], C[:k]
+
+
+def download_to(url, file_path):
+    """
+    Download the file specified by the URL and save it to the file specified
+    by the file_path. Overwrite the file if exist.
+    """
+
+    # see https://stackoverflow.com/questions/7243750/download-file-from-web-in-python-3
+    import urllib.request
+    import shutil
+    # Download the file from `url` and save it locally under `file_name`:
+    with urllib.request.urlopen(url) as response, \
+            open(file_path, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
