@@ -12,7 +12,7 @@ def extend_class(method):
     return wrapper
 
 
-def load_inception_v3(pretrained=False, gpu_id=0, **kwargs):
+def load_inception_v3(device, pretrained=False, **kwargs):
     r"""Inception v3 model architecture from
     `"Rethinking the Inception Architecture for Computer Vision" <http://arxiv.org/abs/1512.00567>`_.
     Args:
@@ -26,7 +26,7 @@ def load_inception_v3(pretrained=False, gpu_id=0, **kwargs):
     if pretrained:
         if 'transform_input' not in kwargs:
             kwargs['transform_input'] = True
-        model = Inception(**kwargs).cuda(gpu_id)
+        model = Inception(**kwargs).to(device)
         model.load_state_dict(model_zoo.load_url(model_urls['inception_v3_google']))
         return model
 
@@ -96,7 +96,8 @@ class Inception(Inception3):
 
 class Generator(nn.Module):
     '''
-        Generative Network
+        Generative Network (DCGAN)
+        used for celebA experiments
     '''
 
     def __init__(self, dataset='celebA'):
@@ -148,5 +149,3 @@ class Generator(nn.Module):
 
     def load(self, save_dir):
         self.load_state_dict(torch.load(save_dir))
-
-
