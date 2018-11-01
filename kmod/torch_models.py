@@ -147,5 +147,5 @@ class Generator(nn.Module):
 
         return output
 
-    def load(self, save_dir):
+    def load(self, save_dir, **opt):
         self.load_state_dict(torch.load(save_dir))

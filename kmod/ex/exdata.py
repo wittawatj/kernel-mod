@@ -64,6 +64,7 @@ shared_resource_folder/problems/lsun/
 │   ├── 1232_dcgan.npy
 │   ├── 1232_dcgan.npy
 
+path to shared_resource_folder/ can be changed in kmod.config.py
 """
 
 from kmod import util, glo, log
@@ -71,11 +72,20 @@ import autograd.numpy as np
 import os
 import urllib
 
+data_url = 'http://ftp.tuebingen.mpg.de/pub/is/wittawat/kmod_share/'
+
+celeba_classes = ['gen_smile', 'gen_nonsmile', 'ref_smile', 'ref_nonsmile']
+cifar10_classes = ['airplane', 'automobile', 'bird', 'cat', 'deer',
+                   'dog', 'frog', 'horse', 'ship', 'truck']
+lsun_classes = ['kitchen', 'restaurant', 'confroom', 'bedroom',
+                '3212_began', '1232_began', '3212_dcgan', '1232_dcgan', ]
+class_lists = {'celeba': celeba_classes, 'cifar10': cifar10_classes,
+               'lsun': lsun_classes}
+
 
 class DataLoader(object):
 
     problem_list = ['cifar10', 'lsun', 'celeba', ]
-    data_url = 'http://ftp.tuebingen.mpg.de/pub/is/wittawat/kmod_share/'
 
     def __init__(self, dataname, feature_folder='inception_features'):
         if dataname not in self.problem_list:
@@ -106,14 +116,6 @@ class DataLoader(object):
 
     @property
     def classes(self):
-        celeba_classes = ['gen_smile', 'gen_nonsmile', 'ref_smile', 'ref_nonsmile']
-        cifar10_classes = ['airplane', 'automobile', 'bird', 'cat', 'deer',
-                           'dog', 'frog', 'horse', 'ship', 'truck']
-        lsun_classes = ['kitchen', 'restaurant', 'confroom', 'bedroom',
-                        '3212_began', '1232_began', '3212_dcgan', '1232_dcgan', ]
-        class_lists = {'celeba': celeba_classes, 'cifar10': cifar10_classes,
-                       'lsun': lsun_classes}
-
         return class_lists[self.dataname]
 
     @property
@@ -174,7 +176,7 @@ class DataLoader(object):
                 Ind = util.subsample_ind(nc, ncmax, seed=seed+3)
                 sub_arr = arr[Ind, :]
                 class_label = self.class_ind_dict[c]
-                Yc = np.ones(ncmax)*class_label
+                Yc = np.ones(ncmax) * class_label
 
                 list_arrays.append(sub_arr)
                 label_arrays.append(Yc)
