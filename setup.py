@@ -25,11 +25,11 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='0.1.0',
 
-    description='A fast kernel-based statistical test for model comparison.',
+    description='Fast kernel-based statistical tests for model comparison.',
     long_description=long_description,
 
     # The project's main homepage.
-    url='https://github.com/wittawatj/kmod',
+    url='https://github.com/wittawatj/kernel-mod',
 
     # Author details
     author='Wittawat Jitkrittum',
