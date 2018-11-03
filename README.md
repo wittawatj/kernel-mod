@@ -3,40 +3,109 @@
 [![Build Status](https://travis-ci.com/wittawatj/kmod.svg?token=yWUaYGwontVUwf9G8fLY&branch=master)](https://travis-ci.com/wittawatj/kmod)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wittawatj/kmod/blob/master/LICENSE)
 
-A kernel test for model comparison
+This repository contains a Python 3.6 implementation of the nonparametric
+linear-time relative goodness-of-fit tests described in [our paper](https://arxiv.org/abs/1810.11630)
 
-* Developed on Python 3.6.3 (installed with Anaconda). Some effort will be made
-  to support Python 2.7.  Collaborators of this project should use Python 3.6+.
+    Informative Features for Model Comparison
+    Wittawat Jitkrittum, Heishiro Kanagawa, Patsorn Sangkloy, James Hays, Bernhard Schölkopf, Arthur Gretton
+    NIPS 2018
+    https://arxiv.org/abs/1810.11630
 
-* Depends on the `kgof` package. This can be obtained from [its git
-  repository](https://github.com/wittawatj/kernel-gof). Will need the Python 3
-  version of the package. Collaborators should install `kgof` from its
-  development [repo](https://github.com/wittawatj/kgof) which is private.
-  Contact Wittawat. See the instruction below.
+## How to install?
 
-* Depends on the `freqopttest` (containing the UME two-sample test) package
+The package can be installed with the `pip` command.
+
+    pip install git+https://github.com/wittawatj/kernel-mod.git
+
+Once installed, you should be able to do `import kmod` without any error.
+
+
+## Dependency
+
+`autograd`, `matplotlib`, `numpy`, `scipy`, and the following two packages.
+
+* The `kgof` package. This can be obtained from [its git
+  repository](https://github.com/wittawatj/kernel-gof).
+
+* The `freqopttest` (containing the UME two-sample test) package
   from  [its git repository](https://github.com/wittawatj/interpretable-test).
-  You will need the Python 3 version of the package. Again, collaborators should install `freqopttest` from its development [repo](https://github.com/wittawatj/fotest).
 
- ## Install `kgof` and `freqopttest`
-
- If you are a coder/collaborator of this project, you should do the followings.
-
- 1. Contact Wittawat to add you to the two Github private repositories.
- 2. Clone the two repositories. You will get two folders, say, at
-    `/path/to/kgof` and `/path/to/freqopttest`.
- 3. Install the two packages with
-
-        pip install -e /path/to/kgof
-        pip install -e /path/to/freqopttest
-
-    Make sure to install them in a Python 3 environment.
-
-4. In Python, make sure you can `import freqopttest` and `import kgof` without
+ In Python, make sure you can `import freqopttest` and `import kgof` without
    any error.
 
-In total, there will be three repositories. During development make sure to
-`git pull` all of them often.
+
+## Demo
+
+To get started, check
+[demo_kgof.ipynb](https://github.com/wittawatj/kernel-mod/blob/master/ipynb/demo_kmod.ipynb).
+This is a Jupyter notebook which will guide you through from the beginning.
+There are many Jupyter notebooks in `ipynb` folder demonstrating other
+implemented tests. Be sure to check them if you would like to explore.
+
+
+## Reproduce experimental results
+
+
+### Experiments on test powers
+
+All experiments which involve test powers can be found in
+`kmod/ex/ex1_vary_n.py`, `kmod/ex/ex2_prob_params.py`, and
+`kmod/ex/ex3_real_images.py`. Each file is runnable with a command line
+argument. For example in
+`ex1_vary_n.py`, we aim to check the test power of each testing algorithm
+as a function of the sample size `n`. The script `ex1_vary_n.py` takes a
+dataset name as its argument. See `run_ex1.sh` which is a standalone Bash
+script on how to execute  `ex1_power_vs_n.py`.
+
+We used [independent-jobs](https://github.com/wittawatj/independent-jobs)
+package to parallelize our experiments over a
+[Slurm](http://slurm.schedmd.com/) cluster (the package is not needed if you
+just need to use our developed tests). For example, for
+`ex1_vary_n.py`, a job is created for each combination of 
+
+    (dataset, test algorithm, n, trial)
+
+If you do not use Slurm, you can change the line 
+
+    engine = SlurmComputationEngine(batch_parameters)
+
+to 
+
+    engine = SerialComputationEngine()
+
+which will instruct the computation engine to just use a normal for-loop on a
+single machine (will take a lot of time). Other computation engines that you
+use might be supported. Running simulation will
+create a lot of result files (one for each tuple above) saved as Pickle. Also, the `independent-jobs`
+package requires a scratch folder to save temporary files for communication
+among computing nodes. Path to the folder containing the saved results can be specified in 
+`kmod/config.py` by changing the value of `expr_results_path`:
+
+    # Full path to the directory to store experimental results.
+    'expr_results_path': '/full/path/to/where/you/want/to/save/results/',
+
+The scratch folder needed by the `independent-jobs` package can be specified in the same file
+by changing the value of `scratch_path`
+
+    # Full path to the directory to store temporary files when running experiments
+    'scratch_path': '/full/path/to/a/temporary/folder/',
+
+To plot the results, see the experiment's corresponding Jupyter notebook in the
+`ipynb/` folder. For example, for `ex1_vary_n.py` see
+`ipynb/ex1_results.ipynb` to plot the results.
+
+### Experiments on images
+
+* Preprocessing scripts for `celeba` and `cifar10` data can be found under
+  `preprocessing/`.  See the readme files in the sub-folders under `proprocessing/`.
+
+* The CNN feature extractor (used to define the kernel) in our Mnist experiment
+  is trained with `kmod/mnist/classify.py`.
+ 
+* Many GAN variants we used (i.e., in experiment 5 in the main text and in the
+  appendix) were trained using the code from
+  [https://github.com/janesjanes/GAN_training_code](https://github.com/janesjanes/GAN_training_code).
+
 
 ## Coding guideline
 
@@ -45,61 +114,12 @@ In total, there will be three repositories. During development make sure to
   of `X.dot(Y)`. `autograd` cannot differentiate the latter. Also, do not use
   `x += ...`.  Use `x = x + ..` instead.
 
-## Other repos
-
-* [https://github.com/janesjanes/GAN_training_code](https://github.com/janesjanes/GAN_training_code)
-
-## Sharing resource files 
-
-Generally it is not a good idea to push large files (e.g., trained GAN models)
-to this repository. Since git maintains all the history, the size of the
-repository can get large quickly. For sharing non-text-file resources (e.g.,
-GAN models, a large collection of sample images), we will use Google Drive.
-I recommend a command-line client called `drive` which can be found
-[here](https://github.com/odeke-em/drive). If you use a commonly used Linux
-distribution, see [this
-page](https://github.com/odeke-em/drive/blob/master/platform_packages.md) for
-installation instructions.
-If you cannot use `drive` or prefer not to, you can use other clients that you
-like (for instance, [the official
-client](https://www.google.com/drive/download/)). You can also just go with
-manual downloading of all the shared files from
-the web, and saving them to your local directory. A drawback of this approach
-is that, when we update some files, you will need to manually update them. With
-the `drive` client, you simply run `drive pull` to get the latest update
-(`drive` does not automatically synchronize in realtime. Other clients might.). 
-
-To have access to our shared Google Drive folder:
-
-1. Ask Wittawat to share with you the folder on Google Drive. You will need a
-   Google account. Make sure you have a write access so you can push your
-   files. Once shared, on [your Google Drive page](https://drive.google.com),
-   you should see a folder called `kmod_share` on the "Shared with me" tab.
-   This folder contains all the resource files (not source code) related to
-   this project. Move it to your drive so that you can sync later by right
-   clicking, and selecting "Add to my drive".
 
 
-2. On your local machine, create a parent folder anywhere to contain all
-   contents on your Google Drive (e.g., `~/Gdrive/`). We will refer to this
-   folder as `Gdrive/`. Assume that you use the `drive` client. `cd` to this
-   folder and run `drive init` to mark this folder as the root folder for your
-   Google Drive.
-   
-   To get the contents in `kmod_share`: 
-   
-   1. Create a subfolder `Gdrive/kmod_share/`.
-   2. `cd` to this subfolder and run `drive pull`. This will pull all contents 
-   from the remote `kmod_share` folder to your local folder.
 
-3. In `kmod.config.py`, modify the value of `shared_resource_path`
-   key to point to your local folder `Gdrive/kmod_share/`. 
+---------------
 
-* Make sure to do `drive pull` often to get the latest update.
-
-* After you make changes or add files, run `drive push` under `kmod_share`
-   to push the contents to the remote folder for other collaborators to see.
-
-        
-
+If you have questions or comments about anything related to this work, please
+do not hesitate to contact [Wittawat Jitkrittum](http://wittawat.com) and
+    [Heishiro Kanagawa](heishirok@gatsby.ucl.ac.uk)
 
