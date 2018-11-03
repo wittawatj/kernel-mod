@@ -124,5 +124,5 @@ To plot the results, see the experiment's corresponding Jupyter notebook in the
 
 If you have questions or comments about anything related to this work, please
 do not hesitate to contact [Wittawat Jitkrittum](http://wittawat.com) and
-    [Heishiro Kanagawa](heishirok@gatsby.ucl.ac.uk)
+    [Heishiro Kanagawa](https://github.com/noukoudashisoup)
 
