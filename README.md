@@ -1,6 +1,5 @@
 # kmod
 
-[![Build Status](https://travis-ci.org/wittawatj/kernel-mod.svg?branch=master)](https://travis-ci.org/wittawatj/kernel-mod)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wittawatj/kernel-mod/blob/master/LICENSE)
 
 This repository contains a Python 3.6 implementation of the nonparametric
