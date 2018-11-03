@@ -1,10 +1,11 @@
 # kmod
 
-[![Build Status](https://travis-ci.com/wittawatj/kmod.svg?token=yWUaYGwontVUwf9G8fLY&branch=master)](https://travis-ci.com/wittawatj/kmod)
+[![Build Status](https://travis-ci.org/wittawatj/kernel-mod.svg?branch=master)](https://travis-ci.org/wittawatj/kernel-mod)
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wittawatj/kernel-mod/blob/master/LICENSE)
 
 This repository contains a Python 3.6 implementation of the nonparametric
-linear-time relative goodness-of-fit tests described in [our paper](https://arxiv.org/abs/1810.11630)
+linear-time relative goodness-of-fit tests (i.e., Rel-UME and Rel-FSSD)
+described in [our paper](https://arxiv.org/abs/1810.11630)
 
     Informative Features for Model Comparison
     Wittawat Jitkrittum, Heishiro Kanagawa, Patsorn Sangkloy, James Hays, Bernhard Schölkopf, Arthur Gretton
