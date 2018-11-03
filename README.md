@@ -1,7 +1,7 @@
 # kmod
 
 [![Build Status](https://travis-ci.com/wittawatj/kmod.svg?token=yWUaYGwontVUwf9G8fLY&branch=master)](https://travis-ci.com/wittawatj/kmod)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wittawatj/kmod/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/wittawatj/kernel-mod/blob/master/LICENSE)
 
 This repository contains a Python 3.6 implementation of the nonparametric
 linear-time relative goodness-of-fit tests described in [our paper](https://arxiv.org/abs/1810.11630)
