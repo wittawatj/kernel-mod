@@ -164,7 +164,7 @@ def met_gumeJ5_3sopt_tr20(P, Q, data_source, n, r):
 
 def met_gumeJ1_3sopt_tr50(P, Q, data_source, n, r, J=1, tr_proportion=0.5):
     """
-    UME-based three-sample tespt
+    UME-based three-sample test
         * Use J=1 test location by default (in the set V=W). 
         * 3sopt = optimize the test locations by maximizing the 3-sample test's
         power criterion. There is only one set of test locations.
