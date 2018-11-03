@@ -18,7 +18,8 @@ install:
     - conda create -n testenv pip python=$TRAVIS_PYTHON_VERSION --yes
     - source activate testenv
     - conda install --yes python=$TRAVIS_PYTHON_VERSION pip numpy scipy nose future autograd matplotlib
-    #- pip install -r requirements.txt
+    - pip install git+https://github.com/wittawatj/kernel-gof.git
+    - pip install git+https://github.com/wittawatj/interpretable-test
 
 # command to run tests
 script:
