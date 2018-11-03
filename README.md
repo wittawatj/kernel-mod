@@ -37,7 +37,7 @@ Once installed, you should be able to do `import kmod` without any error.
 ## Demo
 
 To get started, check
-[demo_kgof.ipynb](https://github.com/wittawatj/kernel-mod/blob/master/ipynb/demo_kmod.ipynb).
+[demo_kmod.ipynb](https://github.com/wittawatj/kernel-mod/blob/master/ipynb/demo_kmod.ipynb).
 This is a Jupyter notebook which will guide you through from the beginning.
 There are many Jupyter notebooks in `ipynb` folder demonstrating other
 implemented tests. Be sure to check them if you would like to explore.
@@ -106,6 +106,10 @@ To plot the results, see the experiment's corresponding Jupyter notebook in the
   appendix) were trained using the code from
   [https://github.com/janesjanes/GAN_training_code](https://github.com/janesjanes/GAN_training_code).
 
+* Trained GAN models (Pytorch 0.4.1) used in this work can be found at
+  [http://ftp.tuebingen.mpg.de/pub/is/wittawat/kmod_share/](http://ftp.tuebingen.mpg.de/pub/is/wittawat/kmod_share/).
+  The readme files in the sub-folders under `preprocessing/` will tell you how
+  to download the model files, for the purpose of reproducing the results.
 
 ## Coding guideline
 
@@ -113,8 +117,6 @@ To plot the results, see the experiment's corresponding Jupyter notebook in the
   `autograd` to do automatic differentiation. Also use `np.dot(X, Y)` instead
   of `X.dot(Y)`. `autograd` cannot differentiate the latter. Also, do not use
   `x += ...`.  Use `x = x + ..` instead.
-
-
 
 
 ---------------
