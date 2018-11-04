@@ -13,11 +13,20 @@ described in [our paper](https://arxiv.org/abs/1810.11630)
 
 ## How to install?
 
-The package can be installed with the `pip` command.
+If you plan to reproduce experimental results, you will probably want to modify
+our code. It is best to install by:
+
+1. Clone the repository by `git clone git@github.com:wittawatj/kernel-mod.git`.
+2. `cd` to the folder that you get, and install our package by
+
+    pip install -e .
+
+Alternatively, if you only want to use the developed package, you can do the
+following without cloning the repository. 
 
     pip install git+https://github.com/wittawatj/kernel-mod.git
 
-Once installed, you should be able to do `import kmod` without any error.
+Either way, once installed, you should be able to do `import kmod` without any error.
 
 
 ## Dependency
@@ -123,5 +132,5 @@ To plot the results, see the experiment's corresponding Jupyter notebook in the
 
 If you have questions or comments about anything related to this work, please
 do not hesitate to contact [Wittawat Jitkrittum](http://wittawat.com) and
-    [Heishiro Kanagawa](https://github.com/noukoudashisoup)
+    [Heishiro Kanagawa](https://noukoudashisoup.github.io/)
 
