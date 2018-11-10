@@ -19,6 +19,7 @@ our code. It is best to install by:
 1. Clone the repository by `git clone git@github.com:wittawatj/kernel-mod.git`.
 2. `cd` to the folder that you get, and install our package by
 
+
     pip install -e .
 
 Alternatively, if you only want to use the developed package, you can do the
@@ -31,7 +32,7 @@ Either way, once installed, you should be able to do `import kmod` without any e
 
 ## Dependency
 
-`autograd`, `matplotlib`, `numpy`, `scipy`, and the following two packages.
+`autograd`, `matplotlib`, `numpy`, `scipy`, Pytorch 0.4.1 and the following two packages.
 
 * The `kgof` package. This can be obtained from [its git
   repository](https://github.com/wittawatj/kernel-gof).
