@@ -9,6 +9,7 @@ from torch import optim
 from torch.autograd import Variable
 from torch.autograd.gradcheck import zero_gradients
 from kmod import data, kernel, util
+from kmod import ptkernel
 from kmod.mctest import SC_UME
 from kmod import log
 
@@ -585,7 +586,7 @@ def run_optimize_3sample_criterion(datap, dataq, datar, gen_p, gen_q, featurizer
 
     gwidth2 = torch.tensor(gwidth0**2, requires_grad=True,
             device=device)
-    k = kernel.PTKGauss(gwidth2)
+    k = ptkernel.PTKGauss(gwidth2)
     Zp = torch.tensor(Zp0, requires_grad=True, device=device,
             dtype=dtype)
     Zq = torch.tensor(Zq0, requires_grad=True, device=device,
